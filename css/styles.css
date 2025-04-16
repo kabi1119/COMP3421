@@ -617,3 +617,115 @@ button:disabled {
 .account-section-footer a:hover {
     text-decoration: underline;
 }
+
+.verification-banner {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 12px 20px;
+    margin: 0 0 20px 0;
+    border-left: 4px solid #ffc107;
+    width: 100%;
+    box-sizing: border-box;
+    display: table;
+    table-layout: fixed;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.verification-banner-message {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.verification-banner-message span {
+    display: inline-block;
+    width: 100%;
+}
+
+.verification-banner-close {
+    display: table-cell;
+    vertical-align: top;
+    width: 20px;
+    text-align: right;
+}
+
+.verification-banner-close button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #856404;
+    padding: 0;
+    margin: 0;
+}
+
+.verification-banner a {
+    color: #0056b3;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.verification-banner a:hover {
+    color: #003d7a;
+}
+
+#welcome-message {
+    font-size: 0.9rem;
+    font-weight: normal;
+    margin-left: 10px;
+    color: white;
+}
+
+.upload-area.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    position: relative;
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+}
+
+.upload-area.disabled:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+.upload-area.disabled button {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.disabled-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(220, 53, 69, 0.9);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    font-weight: 500;
+    z-index: 10;
+    width: 80%;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.verified {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.not-verified {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+#verification-status a {
+    color: #007bff;
+    text-decoration: none;
+    margin-left: 10px;
+}
+
+#verification-status a:hover {
+    text-decoration: underline;
+}

@@ -21,14 +21,107 @@ document.addEventListener('DOMContentLoaded', function() {
     let fileToDelete = null;
     let allFiles = [];
     
+    function handleDragOver(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    }
+
+    function handleDragLeave() {
+        uploadArea.classList.remove('dragover');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    }
+    
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
             currentUser = user;
-            loadFiles();
+            
+            const welcomeMessage = document.getElementById('welcome-message');
+            if (welcomeMessage) {
+                welcomeMessage.textContent = `Welcome! ${user.email}`;
+            }
+            
+            if (!user.emailVerified) {
+                const bannerHTML = `
+                    <div class="verification-banner">
+                        <div class="verification-banner-message">
+                            <span>
+                                Your email address is not verified. Please check your inbox or 
+                                <a href="#" id="resend-verification">
+                                    resend verification email
+                                </a>.
+                            </span>
+                        </div>
+                        <div class="verification-banner-close">
+                            <button id="close-verification-banner">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                const container = document.querySelector('.container');
+                container.insertAdjacentHTML('afterbegin', bannerHTML);
+                
+                document.getElementById('resend-verification').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    sendVerificationEmail();
+                });
+                
+                document.getElementById('close-verification-banner').addEventListener('click', function() {
+                    this.closest('.verification-banner').style.display = 'none';
+                });
+                
+                if (uploadBtn) {
+                    uploadBtn.disabled = true;
+                    uploadBtn.title = 'Please verify your email to upload files';
+                }
+                
+                if (uploadArea) {
+                    uploadArea.classList.add('disabled');
+                    uploadArea.title = 'Please verify your email to upload files';
+                    
+                    const disabledMessage = document.createElement('p');
+                    disabledMessage.className = 'disabled-message';
+                    disabledMessage.textContent = 'Please verify your email to upload files';
+                    uploadArea.appendChild(disabledMessage);
+                    
+                    uploadArea.removeEventListener('dragover', handleDragOver);
+                    uploadArea.removeEventListener('dragleave', handleDragLeave);
+                    uploadArea.removeEventListener('drop', handleDrop);
+                }
+            } else {
+                uploadArea.addEventListener('dragover', handleDragOver);
+                uploadArea.addEventListener('dragleave', handleDragLeave);
+                uploadArea.addEventListener('drop', handleDrop);
+                loadFiles();
+            }
         } else {
             window.location.href = 'index.html';
         }
     });
+    
+    function sendVerificationEmail() {
+        if (!currentUser) return;
+        
+        currentUser.sendEmailVerification()
+            .then(() => {
+                showNotification('Verification email sent. Please check your inbox.', 'success');
+            })
+            .catch((error) => {
+                console.error('Error sending verification email:', error);
+                showNotification('Error sending verification email. Please try again later.', 'error');
+            });
+    }
     
     function loadFiles() {
         fileGrid.innerHTML = '';
@@ -183,26 +276,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    uploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-    
-    uploadArea.addEventListener('dragleave', function() {
-        uploadArea.classList.remove('dragover');
-    });
-    
-    uploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        
-        const files = e.dataTransfer.files;
-        
-        if (files.length > 0) {
-            uploadFiles(files);
-        }
-    });
-    
     function uploadFiles(files) {
         if (!currentUser) return;
         
@@ -212,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let totalBytes = 0;
         let uploadedBytes = 0;
+        let completedFiles = 0;
         
         for (let i = 0; i < files.length; i++) {
             totalBytes += files[i].size;
@@ -226,11 +300,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             uploadTask.on('state_changed', 
                 (snapshot) => {
-                    const fileUploadedBytes = snapshot.bytesTransferred;
-                    const previousUploadedBytes = uploadedBytes - (snapshot.bytesTransferred - snapshot.bytesTransferred);
-                    uploadedBytes = previousUploadedBytes + fileUploadedBytes;
+                    const fileProgress = snapshot.bytesTransferred / snapshot.totalBytes;
                     
-                    const progress = Math.round((uploadedBytes / totalBytes) * 100);
+                    uploadedBytes = 0;
+                    for (let j = 0; j < i; j++) {
+                        uploadedBytes += files[j].size;
+                    }
+                    uploadedBytes += snapshot.bytesTransferred;
+                    
+                    const progress = Math.min(Math.round((uploadedBytes / totalBytes) * 100), 100);
                     progressBarFill.style.width = progress + '%';
                     progressText.textContent = `Uploading... ${progress}%`;
                 },
@@ -253,7 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             userId: currentUser.uid
                         })
                         .then(() => {
-                            if (i === files.length - 1) {
+                            completedFiles++;
+                            if (completedFiles === files.length) {
                                 uploadProgress.style.display = 'none';
                                 fileInput.value = '';
                                 showNotification('Files uploaded successfully!', 'success');

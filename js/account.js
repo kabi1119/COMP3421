@@ -31,10 +31,39 @@ document.addEventListener('DOMContentLoaded', function() {
         if (user) {
             currentUser = user;
             userEmail.textContent = user.email;
+            
+            const verificationStatus = document.getElementById('verification-status');
+            if (verificationStatus) {
+                if (user.emailVerified) {
+                    verificationStatus.innerHTML = '<span class="verified">✓ Verified</span>';
+                } else {
+                    verificationStatus.innerHTML = '<span class="not-verified">✗ Not Verified</span> <a href="#" id="verify-email-link">Resend verification email</a>';
+                    
+                    const verifyEmailLink = document.getElementById('verify-email-link');
+                    if (verifyEmailLink) {
+                        verifyEmailLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            sendVerificationEmail();
+                        });
+                    }
+                }
+            }
         } else {
             window.location.href = 'index.html';
         }
     });
+    
+    function sendVerificationEmail() {
+        if (!currentUser) return;
+        
+        currentUser.sendEmailVerification()
+            .then(() => {
+                alert('Verification email sent. Please check your inbox.');
+            })
+            .catch((error) => {
+                alert('Error sending verification email: ' + error.message);
+            });
+    }
     
     newPasswordInput.addEventListener('input', function() {
         const password = newPasswordInput.value;
@@ -231,3 +260,4 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 });
+
