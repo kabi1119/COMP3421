@@ -123,16 +123,72 @@ document.addEventListener('DOMContentLoaded', function() {
                 password
             );
             
-            currentUser.reauthenticateWithCredential(credential).then(() => {
-                return currentUser.delete();
-            }).then(() => {
-                alert('Your account has been deleted.');
-                window.location.href = 'index.html';
-            }).catch((error) => {
-                alert('Error: ' + error.message);
-            });
+            currentUser.reauthenticateWithCredential(credential)
+                .then(() => {
+                    return currentUser.delete();
+                })
+                .then(() => {
+                    alert('Your account has been deleted.');
+                    window.location.href = 'index.html';
+                })
+                .catch((error) => {
+                    console.log("Delete account error:", error);
+                    
+                    let errorMessage = 'An error occurred while deleting your account.';
+                    
+                    try {
+                        if (typeof error.message === 'string' && 
+                            (error.message.startsWith('{') || error.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
+                            
+                            if (error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
+                                errorMessage = 'Incorrect password. Account deletion aborted.';
+                            } else {
+                                const errorObj = JSON.parse(error.message);
+                                if (errorObj.error && errorObj.error.message) {
+                                    if (errorObj.error.message === 'INVALID_LOGIN_CREDENTIALS') {
+                                        errorMessage = 'Incorrect password. Account deletion aborted.';
+                                    } else {
+                                        errorMessage = errorObj.error.message;
+                                    }
+                                }
+                            }
+                        } else if (error.code) {
+                            switch(error.code) {
+                                case 'auth/wrong-password':
+                                case 'auth/invalid-credential':
+                                    errorMessage = 'Incorrect password. Account deletion aborted.';
+                                    break;
+                                case 'auth/too-many-requests':
+                                    errorMessage = 'Too many attempts. Please try again later.';
+                                    break;
+                                case 'auth/requires-recent-login':
+                                    errorMessage = 'For security reasons, please log out and log back in before deleting your account.';
+                                    break;
+                                default:
+                                    errorMessage = error.message;
+                            }
+                        }
+                    } catch (e) {
+                        if (error.code) {
+                            switch(error.code) {
+                                case 'auth/wrong-password':
+                                case 'auth/invalid-credential':
+                                    errorMessage = 'Incorrect password. Account deletion aborted.';
+                                    break;
+                                default:
+                                    errorMessage = error.message;
+                            }
+                        } else {
+                            errorMessage = error.message;
+                        }
+                    }
+                    
+                    alert('Error: ' + errorMessage);
+                });
         }
     });
+    
+    
     
     function updateVerificationStatus(isVerified) {
         if (isVerified) {
