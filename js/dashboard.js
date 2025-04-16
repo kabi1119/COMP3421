@@ -1,3 +1,4 @@
+//js\dashboard.js
 document.addEventListener('DOMContentLoaded', function() {
     const fileGrid = document.getElementById('file-grid');
     const emptyState = document.getElementById('empty-state');

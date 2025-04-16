@@ -1,3 +1,4 @@
+//js\app.js
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('login-form');
     const fileDashboard = document.getElementById('file-dashboard');

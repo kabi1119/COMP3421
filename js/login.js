@@ -1,3 +1,4 @@
+//js\idle-logout.js
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('login-form');
     const emailInput = document.getElementById('email');

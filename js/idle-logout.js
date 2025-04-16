@@ -1,3 +1,4 @@
+//js\idle-logout.js
 (function() {
     const idleTime = 15 * 60 * 1000;
     let idleTimer;

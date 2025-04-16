@@ -1,3 +1,4 @@
+//js\account.js
 document.addEventListener('DOMContentLoaded', function() {
     const userEmail = document.getElementById('user-email');
     const changePasswordForm = document.getElementById('change-password-form');
