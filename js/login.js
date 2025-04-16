@@ -1,27 +1,41 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const errorMessage = document.getElementById('error-message');
     const loginBtn = document.getElementById('login-btn');
-
+    
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
             window.location.href = 'dashboard.html';
         }
     });
-
-    loginBtn.addEventListener('click', function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+    
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        
+        errorMessage.textContent = '';
+        errorMessage.style.display = 'none';
         
         if (!email || !password) {
-            alert('Please enter both email and password');
+            errorMessage.textContent = 'Please enter both email and password.';
+            errorMessage.style.display = 'block';
             return;
         }
         
+        loginBtn.disabled = true;
+        
         firebase.auth().signInWithEmailAndPassword(email, password)
-            .then(function() {
+            .then((userCredential) => {
                 window.location.href = 'dashboard.html';
             })
-            .catch(function(error) {
-                alert('Login failed: ' + error.message);
+            .catch((error) => {
+                errorMessage.textContent = 'Invalid email or password.';
+                errorMessage.style.display = 'block';
+                loginBtn.disabled = false;
             });
     });
 });

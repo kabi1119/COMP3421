@@ -5,18 +5,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmPasswordInput = document.getElementById('confirm-password');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
+    const registerBtn = document.getElementById('register-btn');
     
     registerForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
         
         errorMessage.textContent = '';
         errorMessage.style.display = 'none';
         successMessage.textContent = '';
         successMessage.style.display = 'none';
-        
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        const confirmPassword = confirmPasswordInput.value;
         
         if (!email || !password || !confirmPassword) {
             errorMessage.textContent = 'Please fill in all fields.';
@@ -36,6 +37,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        registerBtn.disabled = true;
+        
         firebase.auth().createUserWithEmailAndPassword(email, password)
             .then((userCredential) => {
                 successMessage.textContent = 'Registration successful! Redirecting to login...';
@@ -48,9 +51,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 2000);
             })
             .catch((error) => {
-                console.error('Registration error:', error);
                 errorMessage.textContent = error.message;
                 errorMessage.style.display = 'block';
+                registerBtn.disabled = false;
             });
     });
 });
