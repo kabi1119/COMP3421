@@ -16,6 +16,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
+            if (!user.emailVerified) {
+                firebase.auth().signOut().then(() => {
+                    window.location.href = 'index.html';
+                    alert('Please verify your email before accessing the dashboard. Check your inbox for a verification link.');
+                });
+                return;
+            }
+            
             currentUser = user;
             userEmail.textContent = user.email;
             
@@ -25,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             window.location.href = 'index.html';
         }
-    });
+    });    
+    
     
     logoutBtn.addEventListener('click', function() {
         firebase.auth().signOut().then(() => {

@@ -1,30 +1,28 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
-    const loginBtn = document.getElementById('login-btn');
     
-    // Check if user is already logged in
-    firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
-            window.location.href = 'dashboard.html';
-        }
-    });
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('registered') === 'true' && successMessage) {
+        successMessage.textContent = 'Registration completed! Please verify your email before logging in.';
+        successMessage.style.display = 'block';
+    }
     
-    // Function to handle login
-    function attemptLogin() {
+    loginBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         
-        errorMessage.textContent = '';
-        errorMessage.style.display = 'none';
-        successMessage.textContent = '';
-        successMessage.style.display = 'none';
+        if (errorMessage) errorMessage.style.display = 'none';
+        if (successMessage) successMessage.style.display = 'none';
         
         if (!email || !password) {
-            errorMessage.textContent = 'Please enter both email and password.';
-            errorMessage.style.display = 'block';
+            showError('Please enter both email and password');
             return;
         }
         
@@ -32,51 +30,51 @@ document.addEventListener('DOMContentLoaded', function() {
         
         firebase.auth().signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
-                successMessage.textContent = 'Login successful! Redirecting...';
-                successMessage.style.display = 'block';
+                const user = userCredential.user;
                 
-                setTimeout(function() {
+                if (!user.emailVerified) {
+                    return firebase.auth().signOut().then(() => {
+                        showError('Please verify your email before logging in. Check your inbox for a verification link.');
+                        loginBtn.disabled = false;
+                    });
+                } else {
                     window.location.href = 'dashboard.html';
-                }, 1000);
+                }
             })
             .catch((error) => {
-                errorMessage.textContent = 'Invalid email or password.';
-                errorMessage.style.display = 'block';
+                console.log("Error:", error);
+                
+                if (error.code === 'auth/invalid-credential' || 
+                    error.code === 'auth/user-not-found' || 
+                    error.code === 'auth/wrong-password') {
+                    showError('Invalid email or password. Please try again.');
+                } else if (error.code === 'auth/too-many-requests') {
+                    showError('Too many failed login attempts. Please try again later.');
+                } else if (error.code === 'auth/user-disabled') {
+                    showError('This account has been disabled.');
+                } else if (error.message && error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
+                    showError('Invalid email or password. Please try again.');
+                } else {
+                    showError('Login error: ' + error.message);
+                }
+                
                 loginBtn.disabled = false;
             });
+    });
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            loginBtn.click();
+        });
     }
     
-    // Login button click handler
-    loginBtn.addEventListener('click', attemptLogin);
-    
-    // Add keydown event listeners for Enter key
-    emailInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            passwordInput.focus();
+    function showError(message) {
+        if (errorMessage) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        } else {
+            alert(message);
         }
-    });
-    
-    passwordInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            attemptLogin();
-        }
-    });
-    
-    // Alternative approach: handle Enter key for the entire form
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            // If focus is on password field, attempt login
-            if (document.activeElement === passwordInput) {
-                e.preventDefault();
-                attemptLogin();
-            }
-            // If focus is on email field, move to password
-            else if (document.activeElement === emailInput) {
-                e.preventDefault();
-                passwordInput.focus();
-            }
-        }
-    });
+    }
 });
