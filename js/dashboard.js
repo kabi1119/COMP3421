@@ -77,6 +77,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    function sanitizeFileName(fileName) {
+        return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    }
+    
     function handleFiles(files) {
         if (!currentUser) return;
         
@@ -98,13 +102,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function uploadFile(file, totalBytes, previousUploadedBytes, isLastFile) {
-        const fileName = file.name;
+        const originalFileName = file.name;
+        const sanitizedFileName = sanitizeFileName(originalFileName);
         const fileSize = file.size;
-        const fileRef = storageRef.child(`users/${currentUser.uid}/${fileName}`);
+        const fileRef = storageRef.child(`users/${currentUser.uid}/files/${Date.now()}_${sanitizedFileName}`);
         
         const metadata = {
             contentType: file.type,
             customMetadata: {
+                'originalFileName': originalFileName,
                 'uploadedBy': currentUser.email,
                 'uploadedAt': new Date().toISOString()
             }
@@ -123,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             (error) => {
                 console.error('Upload failed:', error);
-                alert(`Failed to upload ${fileName}: ${error.message}`);
+                alert(`Failed to upload ${originalFileName}: ${error.message}`);
                 
                 if (isLastFile) {
                     setTimeout(() => {
@@ -153,9 +159,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const userFilesRef = storageRef.child(`users/${currentUser.uid}`);
         
-        userFilesRef.listAll()
-            .then((res) => {
-                if (res.items.length === 0) {
+        listAllFiles(userFilesRef, [])
+            .then(allItems => {
+                if (allItems.length === 0) {
                     loadingIndicator.style.display = 'none';
                     fileList.innerHTML = '<p class="no-files">No files found. Upload some files to get started.</p>';
                     return;
@@ -163,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 let filesProcessed = 0;
                 
-                res.items.forEach((itemRef) => {
+                allItems.forEach((itemRef) => {
                     Promise.all([
                         itemRef.getMetadata(),
                         itemRef.getDownloadURL()
@@ -173,14 +179,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         fileList.appendChild(fileItem);
                         
                         filesProcessed++;
-                        if (filesProcessed === res.items.length) {
+                        if (filesProcessed === allItems.length) {
                             loadingIndicator.style.display = 'none';
                         }
                     })
                     .catch((error) => {
                         console.error('Error getting file details:', error);
                         filesProcessed++;
-                        if (filesProcessed === res.items.length) {
+                        if (filesProcessed === allItems.length) {
                             loadingIndicator.style.display = 'none';
                         }
                     });
@@ -190,6 +196,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error listing files:', error);
                 loadingIndicator.style.display = 'none';
                 fileList.innerHTML = '<p class="error-message">Error loading files. Please try again later.</p>';
+            });
+    }
+    
+    function listAllFiles(ref, allItems = []) {
+        return ref.listAll()
+            .then(res => {
+                const itemPromises = res.items.map(itemRef => {
+                    allItems.push(itemRef);
+                    return Promise.resolve();
+                });
+                
+                const folderPromises = res.prefixes.map(folderRef => {
+                    return listAllFiles(folderRef, allItems);
+                });
+                
+                return Promise.all([...itemPromises, ...folderPromises]).then(() => allItems);
             });
     }
     
@@ -204,10 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const fileIcon = getFileIcon(metadata.contentType);
         
+        const displayName = metadata.customMetadata && metadata.customMetadata.originalFileName ? 
+                           metadata.customMetadata.originalFileName : metadata.name;
+        
         fileItem.innerHTML = `
             <div class="file-info">
                 <div class="file-icon"><i class="${fileIcon}"></i></div>
-                <div class="file-name">${metadata.name}</div>
+                <div class="file-name">${displayName}</div>
             </div>
             <div class="file-size">${formattedSize}</div>
             <div class="file-date">${formattedDate}</div>
@@ -235,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         deleteBtn.addEventListener('click', function() {
-            if (confirm(`Are you sure you want to delete ${metadata.name}?`)) {
+            if (confirm(`Are you sure you want to delete ${displayName}?`)) {
                 const fileRef = storageRef.child(metadata.fullPath);
                 
                 fileRef.delete().then(() => {
@@ -246,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }).catch((error) => {
                     console.error('Error deleting file:', error);
-                    alert(`Failed to delete ${metadata.name}: ${error.message}`);
+                    alert(`Failed to delete ${displayName}: ${error.message}`);
                 });
             }
         });
