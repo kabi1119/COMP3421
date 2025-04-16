@@ -15,9 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        console.log("Login form submitted");
+    loginBtn.addEventListener('click', function() {
+        console.log("Login button clicked");
         
         const email = emailInput.value.trim();
         const password = passwordInput.value;

@@ -18,7 +18,7 @@
                 <h2>Create an Account</h2>
             </div>
             
-            <form id="register-form">
+            <form id="register-form" onsubmit="return false;">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" required>
@@ -33,7 +33,7 @@
                 </div>
                 <div id="error-message" class="error-message"></div>
                 <div id="success-message" class="success-message"></div>
-                <button type="submit" id="register-btn">Register</button>
+                <button type="button" id="register-btn">Register</button>
             </form>
             
             <div class="login-footer">

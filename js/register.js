@@ -9,9 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log("Register script loaded");
     
-    registerForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        console.log("Register form submitted");
+    registerBtn.addEventListener('click', function() {
+        console.log("Register button clicked");
         
         const email = emailInput.value.trim();
         const password = passwordInput.value;
