@@ -9,6 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/register.js" defer></script>
 </head>
 <body>
     <div class="login-container">
@@ -18,7 +19,7 @@
                 <h2>Create an Account</h2>
             </div>
             
-            <form id="register-form" onsubmit="return false;">
+            <div>
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" required>
@@ -34,14 +35,12 @@
                 <div id="error-message" class="error-message"></div>
                 <div id="success-message" class="success-message"></div>
                 <button type="button" id="register-btn">Register</button>
-            </form>
+            </div>
             
             <div class="login-footer">
                 <p>Already have an account? <a href="index.html">Log in</a></p>
             </div>
         </div>
     </div>
-
-    <script src="js/register.js"></script>
 </body>
 </html>

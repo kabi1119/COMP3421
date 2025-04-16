@@ -10,86 +10,55 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <script src="js/firebase-config.js"></script>
+    <script src="js/dashboard.js" defer></script>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="sidebar">
+    <div class="dashboard-container">
+        <header class="dashboard-header">
             <div class="logo">
-                <i class="fas fa-cloud"></i> <span>COMP3421</span>
+                <i class="fas fa-cloud"></i>
+                <span>COMP3421</span>
             </div>
-            <div class="nav-item active">
-                <i class="fas fa-home"></i> <span>Dashboard</span>
+            <div class="search-bar">
+                <input type="text" placeholder="Search files...">
+                <i class="fas fa-search"></i>
             </div>
-            <div class="nav-item">
-                <i class="fas fa-file"></i> <span>My Files</span>
+            <div class="user-menu">
+                <span id="user-email">user@example.com</span>
+                <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </div>
-            <div class="nav-item">
-                <i class="fas fa-share-alt"></i> <span>Shared</span>
-            </div>
-            <div class="nav-item">
-                <i class="fas fa-trash"></i> <span>Trash</span>
-            </div>
-            <div class="nav-item" id="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-            </div>
-        </div>
+        </header>
         
-        <div class="main-content">
-            <div class="header">
-                <h1>Dashboard</h1>
-                <div class="user-info">
-                    <span id="user-email"></span>
-                    <img src="https://via.placeholder.com/40" alt="User">
-                </div>
-            </div>
-            
+        <main class="dashboard-main">
             <div class="upload-section">
-                <div class="upload-header">
-                    <h2>Upload Files</h2>
+                <div id="upload-area" class="upload-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop files here or</p>
+                    <button id="upload-btn">Browse Files</button>
+                    <input type="file" id="file-input" multiple hidden>
                 </div>
-                <div class="upload-area" id="upload-area">
-                    <div class="upload-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <div class="upload-text">
-                        Drag and drop files here, or click to select files
-                    </div>
-                    <div class="upload-btn" id="upload-btn">Select Files</div>
-                    <input type="file" id="file-input" class="file-input" multiple>
-                </div>
-                <div class="upload-progress" id="upload-progress">
+                
+                <div id="upload-progress" class="upload-progress">
                     <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
+                        <div id="progress-fill" class="progress-fill"></div>
                     </div>
-                    <div class="progress-text" id="progress-text">0%</div>
+                    <div id="progress-text" class="progress-text">0%</div>
                 </div>
             </div>
             
             <div class="files-section">
-                <div class="files-header">
-                    <h2>Recent Files</h2>
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Search files...">
-                    </div>
+                <h2>Your Files</h2>
+                
+                <div id="loading-indicator" class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading files...</span>
                 </div>
                 
-                <div class="file-list-header">
-                    <div>Name</div>
-                    <div>Size</div>
-                    <div>Modified</div>
-                    <div>Actions</div>
-                </div>
-                
-                <ul class="file-list" id="file-list">
-                    <div class="loading-indicator" id="loading-indicator">
-                        <div class="spinner"></div>
-                    </div>
+                <ul id="file-list" class="file-list">
+                    <!-- Files will be loaded here dynamically -->
                 </ul>
             </div>
-        </div>
+        </main>
     </div>
-
-    <script src="js/dashboard.js"></script>
 </body>
 </html>
