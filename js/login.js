@@ -44,12 +44,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = 'dashboard.html';
             })
             .catch((error) => {
+                console.log("Login error:", error);
+                
                 let errorMsg = error.message;
                 
-                if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-                    errorMsg = 'Invalid email or password';
-                } else if (error.code === 'auth/too-many-requests') {
-                    errorMsg = 'Too many failed login attempts. Please try again later or reset your password.';
+                try {
+                    if (typeof error.message === 'string' && 
+                        (error.message.startsWith('{') || error.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
+                        
+                        if (error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
+                            errorMsg = 'Invalid email or password';
+                        } else {
+                            const errorObj = JSON.parse(error.message);
+                            if (errorObj.error && errorObj.error.message) {
+                                if (errorObj.error.message === 'INVALID_LOGIN_CREDENTIALS') {
+                                    errorMsg = 'Invalid email or password';
+                                } else {
+                                    errorMsg = errorObj.error.message;
+                                }
+                            }
+                        }
+                    } else if (error.code) {
+                        switch(error.code) {
+                            case 'auth/wrong-password':
+                            case 'auth/user-not-found':
+                            case 'auth/invalid-credential':
+                                errorMsg = 'Invalid email or password';
+                                break;
+                            case 'auth/too-many-requests':
+                                errorMsg = 'Too many failed login attempts. Please try again later or reset your password.';
+                                break;
+                            default:
+                                errorMsg = error.message;
+                        }
+                    }
+                } catch (e) {
+                    if (error.code) {
+                        switch(error.code) {
+                            case 'auth/wrong-password':
+                            case 'auth/user-not-found':
+                            case 'auth/invalid-credential':
+                                errorMsg = 'Invalid email or password';
+                                break;
+                            case 'auth/too-many-requests':
+                                errorMsg = 'Too many failed login attempts. Please try again later or reset your password.';
+                                break;
+                            default:
+                                errorMsg = error.message;
+                        }
+                    }
                 }
                 
                 showError(errorMsg);
