@@ -30,14 +30,24 @@
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" required>
+                    <div class="password-requirements">
+                        <div class="requirement" id="length-req"><span class="icon">✖</span> At least 8 characters long</div>
+                        <div class="requirement" id="uppercase-req"><span class="icon">✖</span> Contains an uppercase letter</div>
+                        <div class="requirement" id="lowercase-req"><span class="icon">✖</span> Contains a lowercase letter</div>
+                        <div class="requirement" id="number-req"><span class="icon">✖</span> Contains a number</div>
+                        <div class="requirement" id="special-req"><span class="icon">✖</span> Contains a special character (_\-!?@*#$%^&+=)</div>
+                    </div>
                 </div>
                 
                 <div class="form-group">
                     <label for="confirm-password">Confirm Password</label>
                     <input type="password" id="confirm-password" name="confirm-password" required>
+                    <div class="password-requirements">
+                        <div class="requirement" id="match-req"><span class="icon">✖</span> Passwords match</div>
+                    </div>
                 </div>
                 
-                <button type="submit" id="register-btn">Register</button>
+                <button type="submit" id="register-btn" disabled>Register</button>
             </form>
             
             <div class="login-footer">
@@ -45,10 +55,6 @@
             </div>
         </div>
     </div>
+    
 </body>
-<footer class="footer">
-    <div class="footer-content">
-        <p>&copy; 2025 COMP3421 Kabi, LAI Hei Chun. All rights reserved.</p>
-    </div>
-</footer>
 </html>

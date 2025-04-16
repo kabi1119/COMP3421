@@ -1,112 +1,128 @@
 document.addEventListener('DOMContentLoaded', function() {
     const userEmail = document.getElementById('user-email');
-    const accountEmail = document.getElementById('account-email');
-    const verificationBadge = document.getElementById('verification-badge');
-    const resendVerificationBtn = document.getElementById('resend-verification');
-    const passwordForm = document.getElementById('password-form');
-    const currentPasswordInput = document.getElementById('current-password');
-    const newPasswordInput = document.getElementById('new-password');
-    const confirmPasswordInput = document.getElementById('confirm-password');
-    const changePasswordBtn = document.getElementById('change-password-btn');
-    const passwordMessage = document.getElementById('password-message');
-    const resetPasswordBtn = document.getElementById('reset-password-btn');
-    const resetMessage = document.getElementById('reset-message');
+    const changePasswordForm = document.getElementById('change-password-form');
     const deleteAccountBtn = document.getElementById('delete-account-btn');
-    const dashboardBtn = document.getElementById('dashboard-btn');
     const logoutBtn = document.getElementById('logout-btn');
     
-    let currentUser;
+    const newPasswordInput = document.getElementById('new-password');
+    const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+    const changePasswordBtn = document.getElementById('change-password-btn');
+    
+    const lengthReq = document.getElementById('length-req');
+    const uppercaseReq = document.getElementById('uppercase-req');
+    const lowercaseReq = document.getElementById('lowercase-req');
+    const numberReq = document.getElementById('number-req');
+    const specialReq = document.getElementById('special-req');
+    const matchReq = document.getElementById('match-req');
+    
+    let validLength = false;
+    let validUppercase = false;
+    let validLowercase = false;
+    let validNumber = false;
+    let validSpecial = false;
+    let validMatch = false;
+    
+    changePasswordBtn.disabled = true;
+    
+    let currentUser = null;
     
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
             currentUser = user;
             userEmail.textContent = user.email;
-            accountEmail.textContent = user.email;
-            
-            updateVerificationStatus(user.emailVerified);
-            
-            if (!user.emailVerified) {
-                resendVerificationBtn.style.display = 'inline-block';
-            } else {
-                resendVerificationBtn.style.display = 'none';
-            }
         } else {
             window.location.href = 'index.html';
         }
     });
     
-    dashboardBtn.addEventListener('click', function() {
-        window.location.href = 'dashboard.html';
-    });
-    
-    logoutBtn.addEventListener('click', function() {
-        firebase.auth().signOut().then(() => {
-            window.location.href = 'index.html';
-        }).catch((error) => {
-            console.error('Error signing out:', error);
-        });
-    });
-    
-    resendVerificationBtn.addEventListener('click', function() {
-        if (!currentUser) return;
+    newPasswordInput.addEventListener('input', function() {
+        const password = newPasswordInput.value;
         
-        currentUser.sendEmailVerification().then(() => {
-            showMessage(resetMessage, 'Verification email sent! Please check your inbox.', 'success');
-        }).catch((error) => {
-            showMessage(resetMessage, error.message, 'error');
-        });
+        validLength = password.length >= 8;
+        updateRequirement(lengthReq, validLength);
+        
+        validUppercase = /[A-Z]/.test(password);
+        updateRequirement(uppercaseReq, validUppercase);
+        
+        validLowercase = /[a-z]/.test(password);
+        updateRequirement(lowercaseReq, validLowercase);
+        
+        validNumber = /[0-9]/.test(password);
+        updateRequirement(numberReq, validNumber);
+        
+        validSpecial = /[_\-!?@*#$%^&+=]/.test(password);
+        updateRequirement(specialReq, validSpecial);
+        
+        if (confirmNewPasswordInput.value) {
+            validMatch = password === confirmNewPasswordInput.value;
+            updateRequirement(matchReq, validMatch);
+        }
+        
+        updateChangePasswordButton();
     });
     
-    passwordForm.addEventListener('submit', function(e) {
+    confirmNewPasswordInput.addEventListener('input', function() {
+        validMatch = newPasswordInput.value === confirmNewPasswordInput.value;
+        updateRequirement(matchReq, validMatch);
+        
+        updateChangePasswordButton();
+    });
+    
+    function updateRequirement(element, isValid) {
+        if (isValid) {
+            element.classList.add('valid');
+            element.querySelector('.icon').textContent = '✓';
+        } else {
+            element.classList.remove('valid');
+            element.querySelector('.icon').textContent = '✖';
+        }
+    }
+    
+    function updateChangePasswordButton() {
+        changePasswordBtn.disabled = !(validLength && validUppercase && validLowercase && 
+                                   validNumber && validSpecial && validMatch);
+    }
+    
+    changePasswordForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const currentPassword = currentPasswordInput.value;
+        if (!currentUser) return;
+        
+        const currentPassword = document.getElementById('current-password').value;
         const newPassword = newPasswordInput.value;
-        const confirmPassword = confirmPasswordInput.value;
         
-        if (newPassword !== confirmPassword) {
-            showMessage(passwordMessage, 'New passwords do not match', 'error');
+        if (!currentPassword || !newPassword) {
+            alert('Please fill in all fields');
             return;
         }
         
-        if (newPassword.length < 6) {
-            showMessage(passwordMessage, 'New password must be at least 6 characters', 'error');
+        if (!(validLength && validUppercase && validLowercase && validNumber && validSpecial && validMatch)) {
+            alert('Please ensure your new password meets all requirements');
             return;
         }
-        
-        changePasswordBtn.disabled = true;
         
         const credential = firebase.auth.EmailAuthProvider.credential(
             currentUser.email,
             currentPassword
         );
         
-        currentUser.reauthenticateWithCredential(credential).then(() => {
-            return currentUser.updatePassword(newPassword);
-        }).then(() => {
-            showMessage(passwordMessage, 'Password updated successfully!', 'success');
-            passwordForm.reset();
-        }).catch((error) => {
-            showMessage(passwordMessage, error.message, 'error');
-        }).finally(() => {
-            changePasswordBtn.disabled = false;
-        });
-    });
-    
-    resetPasswordBtn.addEventListener('click', function() {
-        if (!currentUser) return;
-        
-        resetPasswordBtn.disabled = true;
-        
-        firebase.auth().sendPasswordResetEmail(currentUser.email)
+        currentUser.reauthenticateWithCredential(credential)
             .then(() => {
-                showMessage(resetMessage, 'Password reset email sent! Check your inbox.', 'success');
+                return currentUser.updatePassword(newPassword);
+            })
+            .then(() => {
+                alert('Password updated successfully');
+                changePasswordForm.reset();
+                
+                [lengthReq, uppercaseReq, lowercaseReq, numberReq, specialReq, matchReq].forEach(req => {
+                    req.classList.remove('valid');
+                    req.querySelector('.icon').textContent = '✖';
+                });
+                
+                changePasswordBtn.disabled = true;
             })
             .catch((error) => {
-                showMessage(resetMessage, error.message, 'error');
-            })
-            .finally(() => {
-                resetPasswordBtn.disabled = false;
+                alert('Error: ' + error.message);
             });
     });
     
@@ -146,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const errorObj = JSON.parse(error.message);
                                 if (errorObj.error && errorObj.error.message) {
                                     if (errorObj.error.message === 'INVALID_LOGIN_CREDENTIALS') {
-                                        errorMessage = 'Incorrect password. Account deletion aborted.';
+                                        errorMessage = 'Incorrect password. Account deletion canceled.';
                                     } else {
                                         errorMessage = errorObj.error.message;
                                     }
@@ -156,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             switch(error.code) {
                                 case 'auth/wrong-password':
                                 case 'auth/invalid-credential':
-                                    errorMessage = 'Incorrect password. Account deletion aborted.';
+                                    errorMessage = 'Incorrect password. Account deletion canceled.';
                                     break;
                                 case 'auth/too-many-requests':
                                     errorMessage = 'Too many attempts. Please try again later.';
@@ -188,25 +204,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    
-    
-    function updateVerificationStatus(isVerified) {
-        if (isVerified) {
-            verificationBadge.textContent = 'Verified';
-            verificationBadge.className = 'badge verified';
-        } else {
-            verificationBadge.textContent = 'Not Verified';
-            verificationBadge.className = 'badge not-verified';
-        }
-    }
-    
-    function showMessage(element, message, type) {
-        element.textContent = message;
-        element.className = `message ${type}`;
-        
-        setTimeout(() => {
-            element.textContent = '';
-            element.className = 'message';
-        }, 5000);
-    }
+    logoutBtn.addEventListener('click', function() {
+        firebase.auth().signOut()
+            .then(() => {
+                window.location.href = 'index.html';
+            })
+            .catch((error) => {
+                alert('Error signing out: ' + error.message);
+            });
+    });
 });

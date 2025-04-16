@@ -1,291 +1,149 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const userEmail = document.getElementById('user-email');
-    const logoutBtn = document.getElementById('logout-btn');
-    const fileList = document.getElementById('file-list');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const fileGrid = document.getElementById('file-grid');
+    const emptyState = document.getElementById('empty-state');
     const uploadArea = document.getElementById('upload-area');
     const fileInput = document.getElementById('file-input');
     const uploadBtn = document.getElementById('upload-btn');
     const uploadProgress = document.getElementById('upload-progress');
-    const progressFill = document.getElementById('progress-fill');
+    const progressBarFill = document.getElementById('progress-bar-fill');
     const progressText = document.getElementById('progress-text');
-    const searchInput = document.querySelector('.search-bar input');
+    const logoutBtn = document.getElementById('logout-btn');
+    const deleteModal = document.getElementById('delete-modal');
+    const closeDeleteModal = document.getElementById('close-delete-modal');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const deleteFileName = document.getElementById('delete-file-name');
+    const notification = document.getElementById('notification');
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
     
-    let storageRef;
-    let currentUser;
+    let currentUser = null;
+    let fileToDelete = null;
+    let allFiles = [];
     
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
-            if (!user.emailVerified) {
-                firebase.auth().signOut().then(() => {
-                    window.location.href = 'index.html';
-                    alert('Please verify your email before accessing the dashboard. Check your inbox for a verification link.');
-                });
-                return;
-            }
-            
             currentUser = user;
-            userEmail.textContent = user.email;
-            
-            storageRef = firebase.storage().ref();
-            
-            loadUserFiles();
+            loadFiles();
         } else {
             window.location.href = 'index.html';
         }
-    });    
-    
-    
-    logoutBtn.addEventListener('click', function() {
-        firebase.auth().signOut().then(() => {
-            window.location.href = 'index.html';
-        }).catch((error) => {
-            console.error('Error signing out:', error);
-        });
     });
     
-    uploadBtn.addEventListener('click', function() {
-        fileInput.click();
-    });
-    
-    uploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('active');
-    });
-    
-    uploadArea.addEventListener('dragleave', function() {
-        uploadArea.classList.remove('active');
-    });
-    
-    uploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('active');
+    function loadFiles() {
+        fileGrid.innerHTML = '';
         
-        if (e.dataTransfer.files.length) {
-            handleFiles(e.dataTransfer.files);
-        }
-    });
-    
-    fileInput.addEventListener('change', function() {
-        if (fileInput.files.length) {
-            handleFiles(fileInput.files);
-        }
-    });
-    
-    searchInput.addEventListener('input', function() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const fileItems = fileList.querySelectorAll('.file-item');
-        
-        fileItems.forEach(item => {
-            const fileName = item.querySelector('.file-name').textContent.toLowerCase();
-            if (fileName.includes(searchTerm)) {
-                item.style.display = 'grid';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-    
-    function sanitizeFileName(fileName) {
-        return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    }
-    
-    function handleFiles(files) {
-        if (!currentUser) return;
-        
-        uploadProgress.style.display = 'block';
-        progressFill.style.width = '0%';
-        progressText.textContent = '0%';
-        
-        let totalBytes = 0;
-        let uploadedBytes = 0;
-        
-        for (let i = 0; i < files.length; i++) {
-            totalBytes += files[i].size;
-        }
-        
-        for (let i = 0; i < files.length; i++) {
-            uploadFile(files[i], totalBytes, uploadedBytes, i === files.length - 1);
-            uploadedBytes += files[i].size;
-        }
-    }
-    
-    function uploadFile(file, totalBytes, previousUploadedBytes, isLastFile) {
-        const originalFileName = file.name;
-        const sanitizedFileName = sanitizeFileName(originalFileName);
-        const fileSize = file.size;
-        const fileRef = storageRef.child(`users/${currentUser.uid}/files/${Date.now()}_${sanitizedFileName}`);
-        
-        const metadata = {
-            contentType: file.type,
-            customMetadata: {
-                'originalFileName': originalFileName,
-                'uploadedBy': currentUser.email,
-                'uploadedAt': new Date().toISOString()
-            }
-        };
-        
-        const uploadTask = fileRef.put(file, metadata);
-        
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const fileProgress = snapshot.bytesTransferred / fileSize;
-                const overallProgress = (previousUploadedBytes + snapshot.bytesTransferred) / totalBytes;
-                const progressPercentage = Math.round(overallProgress * 100);
+        const db = firebase.firestore();
+        db.collection('files')
+            .where('userId', '==', currentUser.uid)
+            .get()
+            .then((querySnapshot) => {
+                allFiles = [];
                 
-                progressFill.style.width = `${progressPercentage}%`;
-                progressText.textContent = `${progressPercentage}%`;
-            },
-            (error) => {
-                console.error('Upload failed:', error);
-                alert(`Failed to upload ${originalFileName}: ${error.message}`);
-                
-                if (isLastFile) {
-                    setTimeout(() => {
-                        uploadProgress.style.display = 'none';
-                    }, 2000);
-                }
-            },
-            () => {
-                if (isLastFile) {
-                    progressFill.style.width = '100%';
-                    progressText.textContent = '100%';
+                if (querySnapshot.empty) {
+                    showEmptyState();
+                } else {
+                    hideEmptyState();
                     
-                    setTimeout(() => {
-                        uploadProgress.style.display = 'none';
-                        loadUserFiles();
-                    }, 2000);
-                }
-            }
-        );
-    }
-    
-    function loadUserFiles() {
-        if (!currentUser) return;
-        
-        loadingIndicator.style.display = 'flex';
-        fileList.innerHTML = '';
-        
-        const userFilesRef = storageRef.child(`users/${currentUser.uid}`);
-        
-        listAllFiles(userFilesRef, [])
-            .then(allItems => {
-                if (allItems.length === 0) {
-                    loadingIndicator.style.display = 'none';
-                    fileList.innerHTML = '<p class="no-files">No files found. Upload some files to get started.</p>';
-                    return;
-                }
-                
-                let filesProcessed = 0;
-                
-                allItems.forEach((itemRef) => {
-                    Promise.all([
-                        itemRef.getMetadata(),
-                        itemRef.getDownloadURL()
-                    ])
-                    .then(([metadata, downloadURL]) => {
-                        const fileItem = createFileItem(metadata, downloadURL);
-                        fileList.appendChild(fileItem);
-                        
-                        filesProcessed++;
-                        if (filesProcessed === allItems.length) {
-                            loadingIndicator.style.display = 'none';
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Error getting file details:', error);
-                        filesProcessed++;
-                        if (filesProcessed === allItems.length) {
-                            loadingIndicator.style.display = 'none';
-                        }
+                    querySnapshot.forEach((doc) => {
+                        const fileData = doc.data();
+                        fileData.id = doc.id;
+                        allFiles.push(fileData);
                     });
-                });
+                    
+                    displayFiles(allFiles);
+                }
             })
             .catch((error) => {
-                console.error('Error listing files:', error);
-                loadingIndicator.style.display = 'none';
-                fileList.innerHTML = '<p class="error-message">Error loading files. Please try again later.</p>';
+                console.error('Error loading files:', error);
+                showNotification('Error loading files. Please try again.', 'error');
             });
     }
     
-    function listAllFiles(ref, allItems = []) {
-        return ref.listAll()
-            .then(res => {
-                const itemPromises = res.items.map(itemRef => {
-                    allItems.push(itemRef);
-                    return Promise.resolve();
-                });
-                
-                const folderPromises = res.prefixes.map(folderRef => {
-                    return listAllFiles(folderRef, allItems);
-                });
-                
-                return Promise.all([...itemPromises, ...folderPromises]).then(() => allItems);
+    function displayFiles(files) {
+        fileGrid.innerHTML = '';
+        
+        if (files.length === 0) {
+            showEmptyState();
+            return;
+        }
+        
+        hideEmptyState();
+        
+        files.forEach((file) => {
+            const fileCard = document.createElement('div');
+            fileCard.className = 'file-card';
+            
+            const fileType = getFileType(file.name);
+            const iconClass = getFileIconClass(fileType);
+            
+            fileCard.innerHTML = `
+                <div class="file-thumbnail">
+                    <i class="fas ${iconClass} file-type-${fileType}"></i>
+                </div>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${formatFileSize(file.size)}</div>
+                    <div class="file-date">Uploaded on ${formatDate(file.uploadedAt)}</div>
+                    <div class="file-actions">
+                        <button class="download-btn" data-url="${file.downloadURL}">Download</button>
+                        <button class="delete-btn" data-id="${file.id}" data-name="${file.name}" data-path="${file.path}">Delete</button>
+                    </div>
+                </div>
+            `;
+            
+            fileGrid.appendChild(fileCard);
+            
+            const downloadBtn = fileCard.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', function() {
+                window.open(this.dataset.url, '_blank');
             });
+            
+            const deleteBtn = fileCard.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                fileToDelete = {
+                    id: this.dataset.id,
+                    name: this.dataset.name,
+                    path: this.dataset.path
+                };
+                
+                deleteFileName.textContent = fileToDelete.name;
+                deleteModal.style.display = 'block';
+            });
+        });
     }
     
-    function createFileItem(metadata, downloadURL) {
-        const fileItem = document.createElement('li');
-        fileItem.className = 'file-item';
-        
-        const formattedSize = formatFileSize(metadata.size);
-        
-        const uploadDate = new Date(metadata.timeCreated);
-        const formattedDate = formatDate(uploadDate);
-        
-        const fileIcon = getFileIcon(metadata.contentType);
-        
-        const displayName = metadata.customMetadata && metadata.customMetadata.originalFileName ? 
-                           metadata.customMetadata.originalFileName : metadata.name;
-        
-        fileItem.innerHTML = `
-            <div class="file-info">
-                <div class="file-icon"><i class="${fileIcon}"></i></div>
-                <div class="file-name">${displayName}</div>
-            </div>
-            <div class="file-size">${formattedSize}</div>
-            <div class="file-date">${formattedDate}</div>
-            <div class="file-actions">
-                <button class="download-btn" title="Download"><i class="fas fa-download"></i></button>
-                <button class="share-btn" title="Share"><i class="fas fa-share-alt"></i></button>
-                <button class="delete-btn" title="Delete"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
-        
-        const downloadBtn = fileItem.querySelector('.download-btn');
-        const shareBtn = fileItem.querySelector('.share-btn');
-        const deleteBtn = fileItem.querySelector('.delete-btn');
-        
-        downloadBtn.addEventListener('click', function() {
-            window.open(downloadURL, '_blank');
-        });
-        
-        shareBtn.addEventListener('click', function() {
-            navigator.clipboard.writeText(downloadURL).then(() => {
-                alert('Download link copied to clipboard!');
-            }).catch(err => {
-                console.error('Could not copy text: ', err);
-            });
-        });
-        
-        deleteBtn.addEventListener('click', function() {
-            if (confirm(`Are you sure you want to delete ${displayName}?`)) {
-                const fileRef = storageRef.child(metadata.fullPath);
-                
-                fileRef.delete().then(() => {
-                    fileItem.remove();
-                    
-                    if (fileList.children.length === 0) {
-                        fileList.innerHTML = '<p class="no-files">No files found. Upload some files to get started.</p>';
-                    }
-                }).catch((error) => {
-                    console.error('Error deleting file:', error);
-                    alert(`Failed to delete ${displayName}: ${error.message}`);
-                });
-            }
-        });
-        
-        return fileItem;
+    function getFileType(fileName) {
+        const extension = fileName.split('.').pop().toLowerCase();
+        return extension;
+    }
+    
+    function getFileIconClass(fileType) {
+        switch (fileType) {
+            case 'pdf':
+                return 'fa-file-pdf';
+            case 'doc':
+            case 'docx':
+                return 'fa-file-word';
+            case 'xls':
+            case 'xlsx':
+                return 'fa-file-excel';
+            case 'ppt':
+            case 'pptx':
+                return 'fa-file-powerpoint';
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+                return 'fa-file-image';
+            case 'zip':
+            case 'rar':
+                return 'fa-file-archive';
+            case 'txt':
+                return 'fa-file-alt';
+            default:
+                return 'fa-file';
+        }
     }
     
     function formatFileSize(bytes) {
@@ -298,34 +156,199 @@ document.addEventListener('DOMContentLoaded', function() {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
     
-    function formatDate(date) {
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return date.toLocaleDateString(undefined, options);
+    function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString();
     }
     
-    function getFileIcon(contentType) {
-        if (contentType.startsWith('image/')) {
-            return 'fas fa-file-image';
-        } else if (contentType.startsWith('video/')) {
-            return 'fas fa-file-video';
-        } else if (contentType.startsWith('audio/')) {
-            return 'fas fa-file-audio';
-        } else if (contentType.includes('pdf')) {
-            return 'fas fa-file-pdf';
-        } else if (contentType.includes('word') || contentType.includes('document')) {
-            return 'fas fa-file-word';
-        } else if (contentType.includes('excel') || contentType.includes('spreadsheet')) {
-            return 'fas fa-file-excel';
-        } else if (contentType.includes('powerpoint') || contentType.includes('presentation')) {
-            return 'fas fa-file-powerpoint';
-        } else if (contentType.includes('zip') || contentType.includes('compressed')) {
-            return 'fas fa-file-archive';
-        } else if (contentType.includes('text/')) {
-            return 'fas fa-file-alt';
-        } else if (contentType.includes('code') || contentType.includes('javascript') || contentType.includes('html') || contentType.includes('css')) {
-            return 'fas fa-file-code';
-        } else {
-            return 'fas fa-file';
+    function showEmptyState() {
+        fileGrid.style.display = 'none';
+        emptyState.style.display = 'block';
+    }
+    
+    function hideEmptyState() {
+        fileGrid.style.display = 'grid';
+        emptyState.style.display = 'none';
+    }
+    
+    uploadBtn.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', function(e) {
+        const files = e.target.files;
+        
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+    
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function() {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+    
+    function uploadFiles(files) {
+        if (!currentUser) return;
+        
+        uploadProgress.style.display = 'block';
+        progressBarFill.style.width = '0%';
+        progressText.textContent = 'Uploading... 0%';
+        
+        let totalBytes = 0;
+        let uploadedBytes = 0;
+        
+        for (let i = 0; i < files.length; i++) {
+            totalBytes += files[i].size;
+        }
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const storageRef = firebase.storage().ref();
+            const fileRef = storageRef.child(`users/${currentUser.uid}/${file.name}`);
+            
+            const uploadTask = fileRef.put(file);
+            
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const fileUploadedBytes = snapshot.bytesTransferred;
+                    const previousUploadedBytes = uploadedBytes - (snapshot.bytesTransferred - snapshot.bytesTransferred);
+                    uploadedBytes = previousUploadedBytes + fileUploadedBytes;
+                    
+                    const progress = Math.round((uploadedBytes / totalBytes) * 100);
+                    progressBarFill.style.width = progress + '%';
+                    progressText.textContent = `Uploading... ${progress}%`;
+                },
+                (error) => {
+                    console.error('Upload error:', error);
+                    uploadProgress.style.display = 'none';
+                    showNotification('Error uploading file: ' + error.message, 'error');
+                },
+                () => {
+                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                        const db = firebase.firestore();
+                        
+                        db.collection('files').add({
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            path: `users/${currentUser.uid}/${file.name}`,
+                            downloadURL: downloadURL,
+                            uploadedAt: Date.now(),
+                            userId: currentUser.uid
+                        })
+                        .then(() => {
+                            if (i === files.length - 1) {
+                                uploadProgress.style.display = 'none';
+                                fileInput.value = '';
+                                showNotification('Files uploaded successfully!', 'success');
+                                loadFiles();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Firestore error:', error);
+                            showNotification('Error saving file information.', 'error');
+                        });
+                    });
+                }
+            );
         }
     }
+    
+    confirmDeleteBtn.addEventListener('click', function() {
+        if (!fileToDelete) return;
+        
+        const db = firebase.firestore();
+        const storageRef = firebase.storage().ref();
+        const fileRef = storageRef.child(fileToDelete.path);
+        
+        db.collection('files').doc(fileToDelete.id).delete()
+            .then(() => {
+                return fileRef.delete();
+            })
+            .then(() => {
+                deleteModal.style.display = 'none';
+                showNotification('File deleted successfully!', 'success');
+                loadFiles();
+            })
+            .catch((error) => {
+                console.error('Delete error:', error);
+                showNotification('Error deleting file.', 'error');
+            });
+    });
+    
+    closeDeleteModal.addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+    });
+    
+    cancelDeleteBtn.addEventListener('click', function() {
+        deleteModal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === deleteModal) {
+            deleteModal.style.display = 'none';
+        }
+    });
+    
+    searchBtn.addEventListener('click', function() {
+        searchFiles();
+    });
+    
+    searchInput.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            searchFiles();
+        }
+    });
+    
+    function searchFiles() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        
+        if (searchTerm === '') {
+            displayFiles(allFiles);
+            return;
+        }
+        
+        const filteredFiles = allFiles.filter(file => 
+            file.name.toLowerCase().includes(searchTerm)
+        );
+        
+        displayFiles(filteredFiles);
+    }
+    
+    function showNotification(message, type = 'info') {
+        notification.textContent = message;
+        notification.className = 'notification ' + type;
+        notification.classList.add('show');
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    }
+    
+    logoutBtn.addEventListener('click', function() {
+        firebase.auth().signOut()
+            .then(() => {
+                window.location.href = 'index.html';
+            })
+            .catch((error) => {
+                console.error('Sign out error:', error);
+                showNotification('Error signing out.', 'error');
+            });
+    });
 });
