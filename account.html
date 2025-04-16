@@ -24,7 +24,7 @@
         <h1>Account Settings</h1>
         
         <div class="card">
-            <div class="account-info">
+            <div class="account-section">
                 <h2>Your Information</h2>
                 <p>Email: <span id="user-email"></span></p>
             </div>
@@ -44,10 +44,10 @@
                         <input type="password" id="new-password" name="new-password" required>
                         <div class="password-requirements">
                             <div class="requirement" id="length-req"><span class="icon">✖</span> At least 8 characters long</div>
-                            <div class="requirement" id="uppercase-req"><span class="icon">✖</span> Contains an uppercase letter</div>
-                            <div class="requirement" id="lowercase-req"><span class="icon">✖</span> Contains a lowercase letter</div>
-                            <div class="requirement" id="number-req"><span class="icon">✖</span> Contains a number</div>
-                            <div class="requirement" id="special-req"><span class="icon">✖</span> Contains a special character</div>
+                            <div class="requirement" id="uppercase-req"><span class="icon">✖</span> Contains uppercase letter</div>
+                            <div class="requirement" id="lowercase-req"><span class="icon">✖</span> Contains lowercase letter</div>
+                            <div class="requirement" id="number-req"><span class="icon">✖</span> Contains number</div>
+                            <div class="requirement" id="special-req"><span class="icon">✖</span> Contains special character</div>
                         </div>
                     </div>
                     
@@ -61,6 +61,9 @@
                     
                     <button type="submit" id="change-password-btn" disabled>Change Password</button>
                 </form>
+                <div class="account-section-footer">
+                    <p>Forgot your current password? <a href="#" id="reset-password-link">Send password reset email</a></p>
+                </div>
             </div>
         </div>
         

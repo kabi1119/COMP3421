@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const changePasswordForm = document.getElementById('change-password-form');
     const deleteAccountBtn = document.getElementById('delete-account-btn');
     const logoutBtn = document.getElementById('logout-btn');
+    const resetPasswordLink = document.getElementById('reset-password-link');
     
     const newPasswordInput = document.getElementById('new-password');
     const confirmNewPasswordInput = document.getElementById('confirm-new-password');
@@ -126,6 +127,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
     
+    resetPasswordLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        if (!currentUser) return;
+        
+        if (confirm('Send password reset email to ' + currentUser.email + '?')) {
+            firebase.auth().sendPasswordResetEmail(currentUser.email)
+                .then(() => {
+                    alert('Password reset email sent. Please check your inbox.');
+                })
+                .catch((error) => {
+                    alert('Error: ' + error.message);
+                });
+        }
+    });
+    
     deleteAccountBtn.addEventListener('click', function() {
         if (!currentUser) return;
         
@@ -157,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             (error.message.startsWith('{') || error.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
                             
                             if (error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
-                                errorMessage = 'Incorrect password. Account deletion aborted.';
+                                errorMessage = 'Incorrect password. Account deletion canceled.';
                             } else {
                                 const errorObj = JSON.parse(error.message);
                                 if (errorObj.error && errorObj.error.message) {
@@ -189,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             switch(error.code) {
                                 case 'auth/wrong-password':
                                 case 'auth/invalid-credential':
-                                    errorMessage = 'Incorrect password. Account deletion aborted.';
+                                    errorMessage = 'Incorrect password. Account deletion canceled.';
                                     break;
                                 default:
                                     errorMessage = error.message;
