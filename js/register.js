@@ -44,8 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 successMessage.textContent = 'Registration successful! Redirecting to login...';
                 successMessage.style.display = 'block';
                 
-                registerForm.reset();
-                
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 2000);

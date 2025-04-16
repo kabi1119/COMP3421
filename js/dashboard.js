@@ -1,259 +1,297 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const userEmail = document.getElementById('user-email');
     const logoutBtn = document.getElementById('logout-btn');
-    const userEmailDisplay = document.getElementById('user-email-display');
+    const fileList = document.getElementById('file-list');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const uploadArea = document.getElementById('upload-area');
     const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
     const uploadProgress = document.getElementById('upload-progress');
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const searchInput = document.querySelector('.search-bar input');
     
-    const uploadedFiles = {};
+    let storageRef;
+    let currentUser;
     
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
-            userEmailDisplay.textContent = user.email;
-            loadingIndicator.classList.remove('hidden');
+            currentUser = user;
+            userEmail.textContent = user.email;
             
-            setTimeout(() => {
-                loadingIndicator.classList.add('hidden');
-            }, 1500);
+            storageRef = firebase.storage().ref();
+            
+            loadUserFiles();
         } else {
             window.location.href = 'index.html';
         }
     });
-
+    
     logoutBtn.addEventListener('click', function() {
-        firebase.auth().signOut()
-            .then(function() {
-                window.location.href = 'index.html';
-            })
-            .catch(function(error) {
-                console.error('Logout error:', error);
-            });
+        firebase.auth().signOut().then(() => {
+            window.location.href = 'index.html';
+        }).catch((error) => {
+            console.error('Error signing out:', error);
+        });
     });
-
-    fileInput.addEventListener('change', function(e) {
-        if (fileInput.files.length > 0) {
-            const files = fileInput.files;
-            for (let i = 0; i < files.length; i++) {
-                simulateFileUpload(files[i]);
-            }
+    
+    uploadBtn.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('active');
+    });
+    
+    uploadArea.addEventListener('dragleave', function() {
+        uploadArea.classList.remove('active');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('active');
+        
+        if (e.dataTransfer.files.length) {
+            handleFiles(e.dataTransfer.files);
         }
     });
-
-    function simulateFileUpload(file) {
-        uploadProgress.classList.remove('hidden');
+    
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length) {
+            handleFiles(fileInput.files);
+        }
+    });
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const fileItems = fileList.querySelectorAll('.file-item');
         
-        const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        fileItems.forEach(item => {
+            const fileName = item.querySelector('.file-name').textContent.toLowerCase();
+            if (fileName.includes(searchTerm)) {
+                item.style.display = 'grid';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    
+    function handleFiles(files) {
+        if (!currentUser) return;
         
-        uploadedFiles[fileId] = file;
+        uploadProgress.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '0%';
         
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 5;
-            progressFill.style.width = progress + '%';
-            progressText.textContent = progress + '%';
-            
-            if (progress >= 100) {
-                clearInterval(interval);
+        let totalBytes = 0;
+        let uploadedBytes = 0;
+        
+        for (let i = 0; i < files.length; i++) {
+            totalBytes += files[i].size;
+        }
+        
+        for (let i = 0; i < files.length; i++) {
+            uploadFile(files[i], totalBytes, uploadedBytes, i === files.length - 1);
+            uploadedBytes += files[i].size;
+        }
+    }
+    
+    function uploadFile(file, totalBytes, previousUploadedBytes, isLastFile) {
+        const fileName = file.name;
+        const fileSize = file.size;
+        const fileRef = storageRef.child(`users/${currentUser.uid}/${fileName}`);
+        
+        const metadata = {
+            contentType: file.type,
+            customMetadata: {
+                'uploadedBy': currentUser.email,
+                'uploadedAt': new Date().toISOString()
+            }
+        };
+        
+        const uploadTask = fileRef.put(file, metadata);
+        
+        uploadTask.on('state_changed', 
+            (snapshot) => {
+                const fileProgress = snapshot.bytesTransferred / fileSize;
+                const overallProgress = (previousUploadedBytes + snapshot.bytesTransferred) / totalBytes;
+                const progressPercentage = Math.round(overallProgress * 100);
                 
-                setTimeout(() => {
-                    uploadProgress.classList.add('hidden');
-                    progressFill.style.width = '0%';
-                    progressText.textContent = '0%';
+                progressFill.style.width = `${progressPercentage}%`;
+                progressText.textContent = `${progressPercentage}%`;
+            },
+            (error) => {
+                console.error('Upload failed:', error);
+                alert(`Failed to upload ${fileName}: ${error.message}`);
+                
+                if (isLastFile) {
+                    setTimeout(() => {
+                        uploadProgress.style.display = 'none';
+                    }, 2000);
+                }
+            },
+            () => {
+                if (isLastFile) {
+                    progressFill.style.width = '100%';
+                    progressText.textContent = '100%';
                     
-                    const fileSize = formatFileSize(file.size);
-                    const now = new Date();
-                    const dateStr = now.toISOString().split('T')[0];
-                    
-                    const newFile = {
-                        id: fileId,
-                        name: file.name,
-                        size: fileSize,
-                        date: dateStr
-                    };
-                    
-                    addFileToList(newFile);
-                }, 500);
+                    setTimeout(() => {
+                        uploadProgress.style.display = 'none';
+                        loadUserFiles();
+                    }, 2000);
+                }
             }
-        }, 100);
+        );
     }
-
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    
+    function loadUserFiles() {
+        if (!currentUser) return;
+        
+        loadingIndicator.style.display = 'flex';
+        fileList.innerHTML = '';
+        
+        const userFilesRef = storageRef.child(`users/${currentUser.uid}`);
+        
+        userFilesRef.listAll()
+            .then((res) => {
+                if (res.items.length === 0) {
+                    loadingIndicator.style.display = 'none';
+                    fileList.innerHTML = '<p class="no-files">No files found. Upload some files to get started.</p>';
+                    return;
+                }
+                
+                let filesProcessed = 0;
+                
+                res.items.forEach((itemRef) => {
+                    Promise.all([
+                        itemRef.getMetadata(),
+                        itemRef.getDownloadURL()
+                    ])
+                    .then(([metadata, downloadURL]) => {
+                        const fileItem = createFileItem(metadata, downloadURL);
+                        fileList.appendChild(fileItem);
+                        
+                        filesProcessed++;
+                        if (filesProcessed === res.items.length) {
+                            loadingIndicator.style.display = 'none';
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error getting file details:', error);
+                        filesProcessed++;
+                        if (filesProcessed === res.items.length) {
+                            loadingIndicator.style.display = 'none';
+                        }
+                    });
+                });
+            })
+            .catch((error) => {
+                console.error('Error listing files:', error);
+                loadingIndicator.style.display = 'none';
+                fileList.innerHTML = '<p class="error-message">Error loading files. Please try again later.</p>';
+            });
     }
-
-    function addFileToList(file) {
-        const fileListElement = document.getElementById('file-list');
-        if (!fileListElement) return;
+    
+    function createFileItem(metadata, downloadURL) {
+        const fileItem = document.createElement('li');
+        fileItem.className = 'file-item';
         
-        const fileItem = createFileItem(file);
-        fileListElement.insertBefore(fileItem, fileListElement.firstChild);
-    }
-
-    function createFileItem(file) {
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.dataset.fileId = file.id;
+        const formattedSize = formatFileSize(metadata.size);
         
-        let iconClass = 'fa-file';
-        const ext = file.name.split('.').pop().toLowerCase();
+        const uploadDate = new Date(metadata.timeCreated);
+        const formattedDate = formatDate(uploadDate);
         
-        if (['pdf'].includes(ext)) {
-            iconClass = 'fa-file-pdf';
-        } else if (['doc', 'docx'].includes(ext)) {
-            iconClass = 'fa-file-word';
-        } else if (['xls', 'xlsx'].includes(ext)) {
-            iconClass = 'fa-file-excel';
-        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-            iconClass = 'fa-file-image';
-        }
+        const fileIcon = getFileIcon(metadata.contentType);
         
-        li.innerHTML = `
+        fileItem.innerHTML = `
             <div class="file-info">
-                <i class="fas ${iconClass} file-icon"></i>
-                <div class="file-name">${file.name}</div>
+                <div class="file-icon"><i class="${fileIcon}"></i></div>
+                <div class="file-name">${metadata.name}</div>
             </div>
-            <div class="file-size">${file.size}</div>
-            <div class="file-date">${file.date}</div>
+            <div class="file-size">${formattedSize}</div>
+            <div class="file-date">${formattedDate}</div>
             <div class="file-actions">
-                <button class="download-btn" title="Download">
-                    <i class="fas fa-download"></i>
-                </button>
-                <button class="share-btn" title="Share">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <button class="delete-btn" title="Delete">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
+                <button class="download-btn" title="Download"><i class="fas fa-download"></i></button>
+                <button class="share-btn" title="Share"><i class="fas fa-share-alt"></i></button>
+                <button class="delete-btn" title="Delete"><i class="fas fa-trash"></i></button>
             </div>
         `;
         
-        const downloadBtn = li.querySelector('.download-btn');
-        const shareBtn = li.querySelector('.share-btn');
-        const deleteBtn = li.querySelector('.delete-btn');
+        const downloadBtn = fileItem.querySelector('.download-btn');
+        const shareBtn = fileItem.querySelector('.share-btn');
+        const deleteBtn = fileItem.querySelector('.delete-btn');
         
         downloadBtn.addEventListener('click', function() {
-            const fileId = li.dataset.fileId;
-            if (uploadedFiles[fileId]) {
-                const url = URL.createObjectURL(uploadedFiles[fileId]);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            } else {
-                alert(`File "${file.name}" is not available for download in this demo.`);
-            }
+            window.open(downloadURL, '_blank');
         });
         
         shareBtn.addEventListener('click', function() {
-            const shareDialog = document.createElement('div');
-            shareDialog.className = 'share-dialog';
-            shareDialog.innerHTML = `
-                <div class="share-dialog-content">
-                    <h3>Share "${file.name}"</h3>
-                    <p>Enter email addresses to share with (comma separated):</p>
-                    <input type="text" id="share-emails" placeholder="example@email.com">
-                    <div class="share-dialog-buttons">
-                        <button id="share-cancel">Cancel</button>
-                        <button id="share-confirm">Share</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(shareDialog);
-            
-            document.getElementById('share-cancel').addEventListener('click', function() {
-                document.body.removeChild(shareDialog);
-            });
-            
-            document.getElementById('share-confirm').addEventListener('click', function() {
-                const emails = document.getElementById('share-emails').value;
-                if (emails) {
-                    alert(`File "${file.name}" shared with: ${emails}`);
-                } else {
-                    alert('Please enter at least one email address');
-                    return;
-                }
-                document.body.removeChild(shareDialog);
+            navigator.clipboard.writeText(downloadURL).then(() => {
+                alert('Download link copied to clipboard!');
+            }).catch(err => {
+                console.error('Could not copy text: ', err);
             });
         });
         
         deleteBtn.addEventListener('click', function() {
-            const fileId = li.dataset.fileId;
-            if (uploadedFiles[fileId]) {
-                delete uploadedFiles[fileId];
+            if (confirm(`Are you sure you want to delete ${metadata.name}?`)) {
+                const fileRef = storageRef.child(metadata.fullPath);
+                
+                fileRef.delete().then(() => {
+                    fileItem.remove();
+                    
+                    if (fileList.children.length === 0) {
+                        fileList.innerHTML = '<p class="no-files">No files found. Upload some files to get started.</p>';
+                    }
+                }).catch((error) => {
+                    console.error('Error deleting file:', error);
+                    alert(`Failed to delete ${metadata.name}: ${error.message}`);
+                });
             }
-            li.remove();
         });
         
-        return li;
+        return fileItem;
     }
     
-    const style = document.createElement('style');
-    style.textContent = `
-        .share-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
         
-        .share-dialog-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-        }
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
         
-        .share-dialog h3 {
-            margin-top: 0;
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function formatDate(date) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString(undefined, options);
+    }
+    
+    function getFileIcon(contentType) {
+        if (contentType.startsWith('image/')) {
+            return 'fas fa-file-image';
+        } else if (contentType.startsWith('video/')) {
+            return 'fas fa-file-video';
+        } else if (contentType.startsWith('audio/')) {
+            return 'fas fa-file-audio';
+        } else if (contentType.includes('pdf')) {
+            return 'fas fa-file-pdf';
+        } else if (contentType.includes('word') || contentType.includes('document')) {
+            return 'fas fa-file-word';
+        } else if (contentType.includes('excel') || contentType.includes('spreadsheet')) {
+            return 'fas fa-file-excel';
+        } else if (contentType.includes('powerpoint') || contentType.includes('presentation')) {
+            return 'fas fa-file-powerpoint';
+        } else if (contentType.includes('zip') || contentType.includes('compressed')) {
+            return 'fas fa-file-archive';
+        } else if (contentType.includes('text/')) {
+            return 'fas fa-file-alt';
+        } else if (contentType.includes('code') || contentType.includes('javascript') || contentType.includes('html') || contentType.includes('css')) {
+            return 'fas fa-file-code';
+        } else {
+            return 'fas fa-file';
         }
-        
-        .share-dialog input {
-            width: 100%;
-            padding: 8px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .share-dialog-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .share-dialog-buttons button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        #share-cancel {
-            background-color: #f3f4f6;
-            color: #4b5563;
-        }
-        
-        #share-confirm {
-            background-color: #4f46e5;
-            color: white;
-        }
-    `;
-    document.head.appendChild(style);
+    }
 });
