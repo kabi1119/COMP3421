@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMP3421 - Secure File Sharing</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+</head>
+<body>
+    <div class="app-container">
+        <div id="login-form" class="auth-container">
+            <div class="auth-header">
+                <i class="fas fa-cloud auth-logo"></i>
+                <h2>Welcome to COMP3421</h2>
+                <p>Sign in to access your secure file sharing system</p>
+            </div>
+            
+            <div class="input-group">
+                <label for="email">Email</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" placeholder="Enter your email">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label for="password">Password</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Enter your password">
+                </div>
+            </div>
+            
+            <div class="auth-actions">
+                <button id="login-btn" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+                <button id="signup-btn" class="btn btn-secondary">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </button>
+            </div>
+        </div>
+        
+        <div id="file-dashboard" class="file-dashboard hidden">
+            <div class="dashboard-header">
+                <h2>My Files</h2>
+                <div class="user-controls">
+                    <span id="user-email-display">user@example.com</span>
+                    <button id="logout-btn" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+                <div id="file-upload" class="upload-area">
+                    <form id="upload-form">
+                        <label for="file-input" class="upload-btn">
+                            <i class="fas fa-cloud-upload-alt"></i> Upload Files
+                        </label>
+                        <input type="file" id="file-input" multiple>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="upload-progress" class="progress-container hidden">
+                <div class="progress-info">
+                    <span>Uploading...</span>
+                    <span id="progress-text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+            
+            <div id="loading-indicator" class="loading-indicator hidden">
+                <i class="fas fa-spinner"></i>
+                <span>Loading your files...</span>
+            </div>
+        </div>
+        <div class="files-container">
+            <div class="files-header">
+                <div class="file-header-item">Name</div>
+                <div class="file-header-item">Size</div>
+                <div class="file-header-item">Date</div>
+                <div class="file-header-item">Actions</div>
+            </div>
+            <ul id="file-list" class="file-list"></ul>
+        </div>
+                
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
