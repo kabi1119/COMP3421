@@ -1,22 +1,18 @@
-//js\idle-logout.js
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('login-form');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
     const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
-    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    const forgotPasswordLink = document.getElementById('forgot-password');
+    const resetPasswordModal = document.getElementById('reset-password-modal');
+    const resetEmailInput = document.getElementById('reset-email');
+    const resetPasswordBtn = document.getElementById('reset-password-btn');
+    const closeResetModal = document.getElementById('close-reset-modal');
+    const resetErrorMessage = document.getElementById('reset-error-message');
+    const resetSuccessMessage = document.getElementById('reset-success-message');
     
-    firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
-            window.location.href = 'dashboard.html';
-        }
-    });
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('registered') === 'true') {
-        showSuccess('Registration successful! Please check your email to verify your account.');
-    }
+    Analytics.trackPageView('Login Page');
     
     loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -24,130 +20,161 @@ document.addEventListener('DOMContentLoaded', function() {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
         
-        errorMessage.style.display = 'none';
-        successMessage.style.display = 'none';
-        
         if (!email || !password) {
-            showError('Please enter both email and password');
+            errorMessage.textContent = 'Please enter both email and password.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('login_validation_error', {
+                'error': 'missing_fields',
+                'has_email': !!email,
+                'has_password': !!password
+            });
+            
             return;
         }
         
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Logging in...';
+        errorMessage.style.display = 'none';
+        
+        Analytics.trackEvent('login_attempt', {
+            'email_domain': email.split('@')[1]
+        });
+        
         firebase.auth().signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
+                Analytics.trackUserAuth('login_success', 'email');
+                
                 const user = userCredential.user;
                 
-                if (!user.emailVerified) {
-                    firebase.auth().signOut();
-                    showError('Please verify your email before logging in. Check your inbox for a verification link.');
-                    return;
-                }
+                Analytics.trackEvent('login_user_info', {
+                    'is_verified': user.emailVerified,
+                    'account_age_days': Math.floor((Date.now() - new Date(user.metadata.creationTime).getTime()) / (1000 * 60 * 60 * 24))
+                });
                 
                 window.location.href = 'dashboard.html';
             })
             .catch((error) => {
-                console.log("Login error:", error);
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Log In';
                 
-                let errorMsg = error.message;
+                errorMessage.textContent = getAuthErrorMessage(error.code);
+                errorMessage.style.display = 'block';
                 
-                try {
-                    if (typeof error.message === 'string' && 
-                        (error.message.startsWith('{') || error.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
-                        
-                        if (error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
-                            errorMsg = 'Invalid email or password';
-                        } else {
-                            const errorObj = JSON.parse(error.message);
-                            if (errorObj.error && errorObj.error.message) {
-                                if (errorObj.error.message === 'INVALID_LOGIN_CREDENTIALS') {
-                                    errorMsg = 'Invalid email or password';
-                                } else {
-                                    errorMsg = errorObj.error.message;
-                                }
-                            }
-                        }
-                    } else if (error.code) {
-                        switch(error.code) {
-                            case 'auth/wrong-password':
-                            case 'auth/user-not-found':
-                            case 'auth/invalid-credential':
-                                errorMsg = 'Invalid email or password';
-                                break;
-                            case 'auth/too-many-requests':
-                                errorMsg = 'Too many failed login attempts. Please try again later or reset your password.';
-                                break;
-                            default:
-                                errorMsg = error.message;
-                        }
-                    }
-                } catch (e) {
-                    if (error.code) {
-                        switch(error.code) {
-                            case 'auth/wrong-password':
-                            case 'auth/user-not-found':
-                            case 'auth/invalid-credential':
-                                errorMsg = 'Invalid email or password';
-                                break;
-                            case 'auth/too-many-requests':
-                                errorMsg = 'Too many failed login attempts. Please try again later or reset your password.';
-                                break;
-                            default:
-                                errorMsg = error.message;
-                        }
-                    }
-                }
-                
-                showError(errorMsg);
+                Analytics.trackUserAuth('login_error', error.code);
             });
     });
     
     forgotPasswordLink.addEventListener('click', function(e) {
         e.preventDefault();
         
-        const email = prompt('Please enter your email address to receive a password reset link:');
+        resetEmailInput.value = emailInput.value || '';
+        resetErrorMessage.style.display = 'none';
+        resetSuccessMessage.style.display = 'none';
+        resetPasswordModal.style.display = 'block';
         
-        if (!email) return;
+        Analytics.trackEvent('forgot_password_clicked', {
+            'has_email': !!emailInput.value
+        });
+    });
+    
+    resetPasswordBtn.addEventListener('click', function() {
+        const email = resetEmailInput.value.trim();
         
-        if (!isValidEmail(email)) {
-            alert('Please enter a valid email address.');
+        if (!email) {
+            resetErrorMessage.textContent = 'Please enter your email address.';
+            resetErrorMessage.style.display = 'block';
+            resetSuccessMessage.style.display = 'none';
+            
+            Analytics.trackEvent('reset_password_validation_error', {
+                'error': 'missing_email'
+            });
+            
             return;
         }
         
-        let accountExists = false;
+        resetPasswordBtn.disabled = true;
+        resetPasswordBtn.textContent = 'Sending...';
+        resetErrorMessage.style.display = 'none';
+        resetSuccessMessage.style.display = 'none';
         
-        firebase.auth().fetchSignInMethodsForEmail(email)
-            .then((signInMethods) => {
-                if (signInMethods.length === 0) {
-                    alert('No account found with this email address.');
-                    return Promise.reject('no-account');
-                }
-                
-                accountExists = true;
-                return firebase.auth().sendPasswordResetEmail(email);
-            })
+        Analytics.trackEvent('reset_password_attempt', {
+            'email_domain': email.split('@')[1]
+        });
+        
+        firebase.auth().sendPasswordResetEmail(email)
             .then(() => {
-                if (accountExists) {
-                    alert('Password reset link has been sent to your email.');
-                }
+                resetPasswordBtn.disabled = false;
+                resetPasswordBtn.textContent = 'Send Reset Link';
+                
+                resetSuccessMessage.textContent = 'Password reset email sent. Please check your inbox.';
+                resetSuccessMessage.style.display = 'block';
+                
+                Analytics.trackEvent('reset_password_success', {
+                    'email_domain': email.split('@')[1]
+                });
             })
             .catch((error) => {
-                if (error !== 'no-account') {
-                    alert('Error: ' + error.message);
-                }
+                resetPasswordBtn.disabled = false;
+                resetPasswordBtn.textContent = 'Send Reset Link';
+                
+                resetErrorMessage.textContent = getAuthErrorMessage(error.code);
+                resetErrorMessage.style.display = 'block';
+                
+                Analytics.trackEvent('reset_password_error', {
+                    'error_code': error.code,
+                    'error_message': error.message
+                });
             });
     });
     
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
+    closeResetModal.addEventListener('click', function() {
+        resetPasswordModal.style.display = 'none';
+        
+        Analytics.trackEvent('reset_password_modal_closed', {
+            'method': 'close_button'
+        });
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === resetPasswordModal) {
+            resetPasswordModal.style.display = 'none';
+            
+            Analytics.trackEvent('reset_password_modal_closed', {
+                'method': 'outside_click'
+            });
+        }
+    });
+    
+    function getAuthErrorMessage(errorCode) {
+        switch (errorCode) {
+            case 'auth/invalid-email':
+                return 'Invalid email address format.';
+            case 'auth/user-disabled':
+                return 'This account has been disabled.';
+            case 'auth/user-not-found':
+                return 'No account found with this email address.';
+            case 'auth/wrong-password':
+                return 'Incorrect password.';
+            case 'auth/too-many-requests':
+                return 'Too many unsuccessful login attempts. Please try again later.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your internet connection.';
+            default:
+                return 'An error occurred. Please try again.';
+        }
     }
     
-    function showSuccess(message) {
-        successMessage.textContent = message;
-        successMessage.style.display = 'block';
-    }
-    
-    function isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
+    window.addEventListener('load', function() {
+        Analytics.trackPerformance();
+    });
+
+    window.pageLoadTime = new Date();
+    window.addEventListener('beforeunload', function() {
+        const timeSpent = Math.round((new Date() - window.pageLoadTime) / 1000);
+        Analytics.trackEvent('page_exit', {
+            'page': 'login',
+            'time_spent': timeSpent
+        });
+    });
 });

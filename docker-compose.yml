@@ -1,0 +1,16 @@
+version: '3'
+services:
+  grafana:
+    image: grafana/grafana-oss
+    container_name: comp3421-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=comp3421password
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+volumes:
+  grafana-storage:

@@ -1,4 +1,3 @@
-//js\dashboard.js
 document.addEventListener('DOMContentLoaded', function() {
     const fileGrid = document.getElementById('file-grid');
     const emptyState = document.getElementById('empty-state');
@@ -106,6 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadArea.addEventListener('drop', handleDrop);
                 loadFiles();
             }
+            
+            Analytics.trackUserAuth('dashboard_visit', user.emailVerified ? 'verified_user' : 'unverified_user');
         } else {
             window.location.href = 'index.html';
         }
@@ -117,10 +118,12 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser.sendEmailVerification()
             .then(() => {
                 showNotification('Verification email sent. Please check your inbox.', 'success');
+                Analytics.trackUserAuth('verification_email_sent', 'success');
             })
             .catch((error) => {
                 console.error('Error sending verification email:', error);
                 showNotification('Error sending verification email. Please try again later.', 'error');
+                Analytics.trackUserAuth('verification_email_error', error.code);
             });
     }
     
@@ -147,10 +150,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     displayFiles(allFiles);
                 }
+                
+                Analytics.trackEvent('files_loaded', {
+                    'files_count': allFiles.length,
+                    'total_size': allFiles.reduce((total, file) => total + file.size, 0)
+                });
             })
             .catch((error) => {
                 console.error('Error loading files:', error);
                 showNotification('Error loading files. Please try again.', 'error');
+                Analytics.trackEvent('files_load_error', {
+                    'error_code': error.code,
+                    'error_message': error.message
+                });
             });
     }
     
@@ -190,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const downloadBtn = fileCard.querySelector('.download-btn');
             downloadBtn.addEventListener('click', function() {
+                Analytics.trackFileDownload(file.name, fileType);
                 window.open(this.dataset.url, '_blank');
             });
             
@@ -203,6 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 deleteFileName.textContent = fileToDelete.name;
                 deleteModal.style.display = 'block';
+                
+                Analytics.trackEvent('delete_dialog_opened', {
+                    'file_name': fileToDelete.name
+                });
             });
         });
     }
@@ -266,6 +283,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     uploadBtn.addEventListener('click', function() {
+        Analytics.trackEvent('upload_button_clicked', {
+            'source': 'button'
+        });
         fileInput.click();
     });
     
@@ -292,6 +312,11 @@ document.addEventListener('DOMContentLoaded', function() {
             totalBytes += files[i].size;
         }
         
+        Analytics.trackEvent('upload_started', {
+            'files_count': files.length,
+            'total_size': totalBytes
+        });
+        
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const storageRef = firebase.storage().ref();
@@ -317,6 +342,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Upload error:', error);
                     uploadProgress.style.display = 'none';
                     showNotification('Error uploading file: ' + error.message, 'error');
+                    
+                    Analytics.trackEvent('upload_error', {
+                        'file_name': file.name,
+                        'file_size': file.size,
+                        'error_code': error.code,
+                        'error_message': error.message
+                    });
                 },
                 () => {
                     uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
@@ -333,16 +365,30 @@ document.addEventListener('DOMContentLoaded', function() {
                         })
                         .then(() => {
                             completedFiles++;
+                            
+                            Analytics.trackFileUpload(file.type, file.size, file.name);
+                            
                             if (completedFiles === files.length) {
                                 uploadProgress.style.display = 'none';
                                 fileInput.value = '';
                                 showNotification('Files uploaded successfully!', 'success');
                                 loadFiles();
+                                
+                                Analytics.trackEvent('upload_completed', {
+                                    'files_count': files.length,
+                                    'total_size': totalBytes
+                                });
                             }
                         })
                         .catch((error) => {
                             console.error('Firestore error:', error);
                             showNotification('Error saving file information.', 'error');
+                            
+                            Analytics.trackEvent('firestore_error', {
+                                'file_name': file.name,
+                                'error_code': error.code,
+                                'error_message': error.message
+                            });
                         });
                     });
                 }
@@ -357,6 +403,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const storageRef = firebase.storage().ref();
         const fileRef = storageRef.child(fileToDelete.path);
         
+        Analytics.trackEvent('delete_confirmed', {
+            'file_name': fileToDelete.name
+        });
+        
         db.collection('files').doc(fileToDelete.id).delete()
             .then(() => {
                 return fileRef.delete();
@@ -364,34 +414,60 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(() => {
                 deleteModal.style.display = 'none';
                 showNotification('File deleted successfully!', 'success');
+                
+                Analytics.trackFileDeletion(fileToDelete.name);
+                
                 loadFiles();
             })
             .catch((error) => {
                 console.error('Delete error:', error);
                 showNotification('Error deleting file.', 'error');
+                
+                Analytics.trackEvent('delete_error', {
+                    'file_name': fileToDelete.name,
+                    'error_code': error.code,
+                    'error_message': error.message
+                });
             });
     });
-    
     closeDeleteModal.addEventListener('click', function() {
         deleteModal.style.display = 'none';
+        Analytics.trackEvent('delete_cancelled', {
+            'method': 'close_button',
+            'file_name': fileToDelete ? fileToDelete.name : 'unknown'
+        });
     });
     
     cancelDeleteBtn.addEventListener('click', function() {
         deleteModal.style.display = 'none';
+        Analytics.trackEvent('delete_cancelled', {
+            'method': 'cancel_button',
+            'file_name': fileToDelete ? fileToDelete.name : 'unknown'
+        });
     });
     
     window.addEventListener('click', function(e) {
         if (e.target === deleteModal) {
             deleteModal.style.display = 'none';
+            Analytics.trackEvent('delete_cancelled', {
+                'method': 'outside_click',
+                'file_name': fileToDelete ? fileToDelete.name : 'unknown'
+            });
         }
     });
     
     searchBtn.addEventListener('click', function() {
+        Analytics.trackEvent('search_button_clicked', {
+            'search_term': searchInput.value.trim()
+        });
         searchFiles();
     });
     
     searchInput.addEventListener('keyup', function(e) {
         if (e.key === 'Enter') {
+            Analytics.trackEvent('search_enter_pressed', {
+                'search_term': searchInput.value.trim()
+            });
             searchFiles();
         }
     });
@@ -408,6 +484,8 @@ document.addEventListener('DOMContentLoaded', function() {
             file.name.toLowerCase().includes(searchTerm)
         );
         
+        Analytics.trackSearch(searchTerm, filteredFiles.length);
+        
         displayFiles(filteredFiles);
     }
     
@@ -416,12 +494,19 @@ document.addEventListener('DOMContentLoaded', function() {
         notification.className = 'notification ' + type;
         notification.classList.add('show');
         
+        Analytics.trackEvent('notification_shown', {
+            'message': message,
+            'type': type
+        });
+        
         setTimeout(() => {
             notification.classList.remove('show');
         }, 3000);
     }
     
     logoutBtn.addEventListener('click', function() {
+        Analytics.trackUserAuth('logout', 'button_click');
+        
         firebase.auth().signOut()
             .then(() => {
                 window.location.href = 'index.html';
@@ -429,6 +514,42 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch((error) => {
                 console.error('Sign out error:', error);
                 showNotification('Error signing out.', 'error');
+                
+                Analytics.trackEvent('logout_error', {
+                    'error_code': error.code,
+                    'error_message': error.message
+                });
             });
+    });
+    
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            Analytics.trackEvent('page_visible', {
+                'page': 'dashboard'
+            });
+        } else {
+            Analytics.trackEvent('page_hidden', {
+                'page': 'dashboard',
+                'time_spent': Math.round((new Date() - window.pageLoadTime) / 1000)
+            });
+        }
+    });
+    
+    window.pageLoadTime = new Date();
+    window.addEventListener('beforeunload', function() {
+        const timeSpent = Math.round((new Date() - window.pageLoadTime) / 1000);
+        Analytics.trackEvent('page_exit', {
+            'page': 'dashboard',
+            'time_spent': timeSpent
+        });
+    });
+    
+    Analytics.trackEvent('browser_info', {
+        'user_agent': navigator.userAgent,
+        'language': navigator.language,
+        'screen_width': window.screen.width,
+        'screen_height': window.screen.height,
+        'window_width': window.innerWidth,
+        'window_height': window.innerHeight
     });
 });

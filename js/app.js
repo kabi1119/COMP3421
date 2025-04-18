@@ -1,364 +1,330 @@
-//js\app.js
 document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('login-form');
-    const fileDashboard = document.getElementById('file-dashboard');
-    const loginBtn = document.getElementById('login-btn');
-    const signupBtn = document.getElementById('signup-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const userEmailDisplay = document.getElementById('user-email-display');
-    const fileInput = document.getElementById('file-input');
-    const uploadForm = document.getElementById('upload-form');
-    const uploadProgress = document.getElementById('upload-progress');
-    const progressFill = document.getElementById('progress-fill');
-    const progressText = document.getElementById('progress-text');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const registerForm = document.getElementById('register-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const registerBtn = document.getElementById('register-btn');
+    const errorMessage = document.getElementById('error-message');
+    const passwordStrengthBar = document.getElementById('password-strength-bar');
+    const passwordStrengthText = document.getElementById('password-strength-text');
+    const togglePassword = document.getElementById('toggle-password');
+    const toggleConfirmPassword = document.getElementById('toggle-confirm-password');
+    const termsCheckbox = document.getElementById('terms-checkbox');
+    const loginLink = document.getElementById('login-link');
     
-    const uploadedFiles = {};
+    Analytics.trackPageView('Registration Page');
     
-    if (!document.getElementById('file-list')) {
-        const filesContainer = document.createElement('div');
-        filesContainer.className = 'files-container';
-        filesContainer.innerHTML = `
-            <div class="files-header">
-                <div class="file-header-item">Name</div>
-                <div class="file-header-item">Size</div>
-                <div class="file-header-item">Date</div>
-                <div class="file-header-item">Actions</div>
-            </div>
-            <ul id="file-list" class="file-list"></ul>
-        `;
-        fileDashboard.appendChild(filesContainer);
-    }
-
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
-            loginForm.classList.add('hidden');
-            fileDashboard.classList.remove('hidden');
-            userEmailDisplay.textContent = user.email;
-            loadingIndicator.classList.remove('hidden');
-            
-            setTimeout(() => {
-                loadingIndicator.classList.add('hidden');
-            }, 1500);
-        } else {
-            loginForm.classList.remove('hidden');
-            fileDashboard.classList.add('hidden');
-            document.getElementById('email').value = '';
-            document.getElementById('password').value = '';
+            window.location.href = 'dashboard.html';
         }
     });
-
-    loginBtn.addEventListener('click', function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+    
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            
+            Analytics.trackEvent('password_visibility_toggled', {
+                'visibility': type === 'text' ? 'shown' : 'hidden',
+                'field': 'password'
+            });
+        });
+    }
+    
+    if (toggleConfirmPassword) {
+        toggleConfirmPassword.addEventListener('click', function() {
+            const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            confirmPasswordInput.setAttribute('type', type);
+            this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+            
+            Analytics.trackEvent('password_visibility_toggled', {
+                'visibility': type === 'text' ? 'shown' : 'hidden',
+                'field': 'confirm_password'
+            });
+        });
+    }
+    
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strength = calculatePasswordStrength(password);
         
-        if (!email || !password) {
-            alert('Please enter both email and password');
+        updatePasswordStrengthIndicator(strength);
+        
+        if (password.length > 0) {
+            Analytics.trackEvent('password_strength', {
+                'strength_score': strength.score,
+                'password_length': password.length,
+                'has_uppercase': /[A-Z]/.test(password),
+                'has_lowercase': /[a-z]/.test(password),
+                'has_number': /[0-9]/.test(password),
+                'has_special': /[^A-Za-z0-9]/.test(password)
+            });
+        }
+    });
+    
+    function updatePasswordStrengthIndicator(strength) {
+        if (!passwordStrengthBar || !passwordStrengthText) return;
+        
+        passwordStrengthBar.style.width = (strength.score * 20) + '%';
+        passwordStrengthText.textContent = strength.feedback;
+        
+        let barColor = '';
+        
+        switch (strength.feedback) {
+            case 'Too short':
+            case 'Weak':
+                barColor = '#ff4d4d';
+                break;
+            case 'Moderate':
+                barColor = '#ffa64d';
+                break;
+            case 'Strong':
+                barColor = '#4dff4d';
+                break;
+            case 'Very Strong':
+                barColor = '#33cc33';
+                break;
+        }
+        
+        passwordStrengthBar.style.backgroundColor = barColor;
+        passwordStrengthText.style.color = barColor;
+    }
+    
+    function calculatePasswordStrength(password) {
+        let score = 0;
+        let feedback = '';
+        
+        if (password.length < 6) {
+            feedback = 'Too short';
+        } else {
+            score += Math.min(2, Math.floor(password.length / 5));
+            
+            if (/[A-Z]/.test(password)) score += 1;
+            if (/[a-z]/.test(password)) score += 1;
+            if (/[0-9]/.test(password)) score += 1;
+            if (/[^A-Za-z0-9]/.test(password)) score += 1;
+            
+            if (score < 2) {
+                feedback = 'Weak';
+            } else if (score < 4) {
+                feedback = 'Moderate';
+            } else if (score < 5) {
+                feedback = 'Strong';
+            } else {
+                feedback = 'Very Strong';
+            }
+        }
+        
+        return {
+            score: score,
+            feedback: feedback
+        };
+    }
+    
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (!email || !password || !confirmPassword) {
+            errorMessage.textContent = 'Please fill in all fields.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('registration_validation_error', {
+                'error': 'missing_fields',
+                'has_email': !!email,
+                'has_password': !!password,
+                'has_confirm_password': !!confirmPassword
+            });
+            
             return;
         }
         
-        firebase.auth().signInWithEmailAndPassword(email, password)
-            .catch(function(error) {
-                alert('Login failed: ' + error.message);
+        if (!validateEmail(email)) {
+            errorMessage.textContent = 'Please enter a valid email address.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('registration_validation_error', {
+                'error': 'invalid_email_format',
+                'email': email
             });
-    });
-
-    signupBtn.addEventListener('click', function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+            
+            return;
+        }
         
-        if (!email || !password) {
-            alert('Please enter both email and password');
+        if (password !== confirmPassword) {
+            errorMessage.textContent = 'Passwords do not match.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('registration_validation_error', {
+                'error': 'password_mismatch'
+            });
+            
             return;
         }
         
         if (password.length < 6) {
-            alert('Password should be at least 6 characters');
+            errorMessage.textContent = 'Password must be at least 6 characters long.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('registration_validation_error', {
+                'error': 'password_too_short',
+                'password_length': password.length
+            });
+            
             return;
         }
         
+        if (termsCheckbox && !termsCheckbox.checked) {
+            errorMessage.textContent = 'You must agree to the Terms and Conditions.';
+            errorMessage.style.display = 'block';
+            
+            Analytics.trackEvent('registration_validation_error', {
+                'error': 'terms_not_accepted'
+            });
+            
+            return;
+        }
+        
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Creating Account...';
+        errorMessage.style.display = 'none';
+        
+        Analytics.trackEvent('registration_attempt', {
+            'email_domain': email.split('@')[1],
+            'password_length': password.length,
+            'password_strength': calculatePasswordStrength(password).feedback
+        });
+        
         firebase.auth().createUserWithEmailAndPassword(email, password)
-            .catch(function(error) {
-                alert('Signup failed: ' + error.message);
-            });
-    });
-
-    logoutBtn.addEventListener('click', function() {
-        firebase.auth().signOut();
-    });
-
-    fileInput.addEventListener('change', function(e) {
-        if (fileInput.files.length > 0) {
-            const files = fileInput.files;
-            for (let i = 0; i < files.length; i++) {
-                simulateFileUpload(files[i]);
-            }
-        }
-    });
-
-    function simulateFileUpload(file) {
-        uploadProgress.classList.remove('hidden');
-        
-        const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        
-        uploadedFiles[fileId] = file;
-        
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += 5;
-            progressFill.style.width = progress + '%';
-            progressText.textContent = progress + '%';
-            
-            if (progress >= 100) {
-                clearInterval(interval);
+            .then((userCredential) => {
+                const user = userCredential.user;
                 
-                setTimeout(() => {
-                    uploadProgress.classList.add('hidden');
-                    progressFill.style.width = '0%';
-                    progressText.textContent = '0%';
-                    
-                    const fileSize = formatFileSize(file.size);
-                    const now = new Date();
-                    const dateStr = now.toISOString().split('T')[0];
-                    
-                    const newFile = {
-                        id: fileId,
-                        name: file.name,
-                        size: fileSize,
-                        date: dateStr
-                    };
-                    
-                    addFileToList(newFile);
-                }, 500);
-            }
-        }, 100);
-    }
-
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    }
-
-    function addFileToList(file) {
-        const fileListElement = document.getElementById('file-list');
-        if (!fileListElement) return;
-        
-        const fileItem = createFileItem(file);
-        fileListElement.insertBefore(fileItem, fileListElement.firstChild);
-    }
-
-    function createFileItem(file) {
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.dataset.fileId = file.id;
-        
-        let iconClass = 'fa-file';
-        const ext = file.name.split('.').pop().toLowerCase();
-        
-        if (['pdf'].includes(ext)) {
-            iconClass = 'fa-file-pdf';
-        } else if (['doc', 'docx'].includes(ext)) {
-            iconClass = 'fa-file-word';
-        } else if (['xls', 'xlsx'].includes(ext)) {
-            iconClass = 'fa-file-excel';
-        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
-            iconClass = 'fa-file-image';
-        }
-        
-        li.innerHTML = `
-            <div class="file-info">
-                <i class="fas ${iconClass} file-icon"></i>
-                <div class="file-name">${file.name}</div>
-            </div>
-            <div class="file-size">${file.size}</div>
-            <div class="file-date">${file.date}</div>
-            <div class="file-actions">
-                <button class="download-btn" title="Download">
-                    <i class="fas fa-download"></i>
-                </button>
-                <button class="share-btn" title="Share">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <button class="delete-btn" title="Delete">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </div>
-        `;
-        
-        const downloadBtn = li.querySelector('.download-btn');
-        const shareBtn = li.querySelector('.share-btn');
-        const deleteBtn = li.querySelector('.delete-btn');
-        
-        downloadBtn.addEventListener('click', function() {
-            const fileId = li.dataset.fileId;
-            if (uploadedFiles[fileId]) {
-                const url = URL.createObjectURL(uploadedFiles[fileId]);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            } else {
-                alert(`File "${file.name}" is not available for download in this demo.`);
-            }
-        });
-        
-        shareBtn.addEventListener('click', function() {
-            const shareDialog = document.createElement('div');
-            shareDialog.className = 'share-dialog';
-            shareDialog.innerHTML = `
-                <div class="share-dialog-content">
-                    <h3>Share "${file.name}"</h3>
-                    <p>Enter email addresses to share with (comma separated):</p>
-                    <input type="text" id="share-emails" placeholder="example@email.com">
-                    <div class="share-dialog-buttons">
-                        <button id="share-cancel">Cancel</button>
-                        <button id="share-confirm">Share</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(shareDialog);
-            
-            document.getElementById('share-cancel').addEventListener('click', function() {
-                document.body.removeChild(shareDialog);
+                Analytics.trackUserAuth('registration_success', 'email');
+                
+                return user.sendEmailVerification()
+                    .then(() => {
+                        Analytics.trackEvent('verification_email_sent', {
+                            'email_domain': email.split('@')[1]
+                        });
+                        
+                        window.location.href = 'dashboard.html';
+                    });
+            })
+            .catch((error) => {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Register';
+                
+                errorMessage.textContent = getAuthErrorMessage(error.code);
+                errorMessage.style.display = 'block';
+                
+                Analytics.trackUserAuth('registration_error', error.code);
             });
-            
-            document.getElementById('share-confirm').addEventListener('click', function() {
-                const emails = document.getElementById('share-emails').value;
-                if (emails) {
-                    alert(`File "${file.name}" shared with: ${emails}`);
-                } else {
-                    alert('Please enter at least one email address');
-                    return;
-                }
-                document.body.removeChild(shareDialog);
-            });
-        });
-        
-        deleteBtn.addEventListener('click', function() {
-            const fileId = li.dataset.fileId;
-            if (uploadedFiles[fileId]) {
-                delete uploadedFiles[fileId];
-            }
-            li.remove();
-        });
-        
-        return li;
+    });
+    
+    function validateEmail(email) {
+        const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        return re.test(email);
     }
     
-    const style = document.createElement('style');
-    style.textContent = `
-        .files-container {
-            margin-top: 20px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-            width: 100%;
-            max-width: 1200px;
+    function getAuthErrorMessage(errorCode) {
+        switch (errorCode) {
+            case 'auth/email-already-in-use':
+                return 'An account with this email already exists.';
+            case 'auth/invalid-email':
+                return 'Invalid email address format.';
+            case 'auth/operation-not-allowed':
+                return 'Email/password accounts are not enabled.';
+            case 'auth/weak-password':
+                return 'Password is too weak. Please choose a stronger password.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your internet connection.';
+            default:
+                return 'An error occurred. Please try again.';
         }
+    }
+    
+    if (loginLink) {
+        loginLink.addEventListener('click', function(e) {
+            Analytics.trackEvent('login_link_clicked', {
+                'page': 'register'
+            });
+        });
+    }
+    
+    const formFields = [emailInput, passwordInput, confirmPasswordInput];
+    formFields.forEach(field => {
+        if (!field) return;
         
-        .file-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 15px;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-            flex-wrap: wrap;
-        }
+        field.addEventListener('focus', function() {
+            Analytics.trackEvent('field_focus', {
+                'field_id': this.id,
+                'page': 'register'
+            });
+        });
         
-        .file-info {
-            flex: 3;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            min-width: 0;
-        }
+        field.addEventListener('blur', function() {
+            if (this.value) {
+                Analytics.trackEvent('field_filled', {
+                    'field_id': this.id,
+                    'page': 'register',
+                    'is_valid': this.id === 'email' ? validateEmail(this.value) : true
+                });
+            }
+        });
+    });
+    
+    window.addEventListener('load', function() {
+        Analytics.trackPerformance();
         
-        .file-name {
-            font-weight: 500;
-            word-break: break-word;
-            white-space: normal;
-            overflow: visible;
+        const referrer = document.referrer;
+        if (referrer) {
+            Analytics.trackEvent('registration_referrer', {
+                'referrer': referrer
+            });
         }
-        
-        .file-actions button i {
-            font-size: 16px !important;
-            display: inline-block !important;
-        }
-        
-        .download-btn i {
-            color: #2563eb !important;
-        }
-        
-        .share-btn i {
-            color: #4f46e5 !important;
-        }
-        
-        .delete-btn i {
-            color: #dc2626 !important;
-        }
-        
-        .share-dialog {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .share-dialog-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-        }
-        
-        .share-dialog h3 {
-            margin-top: 0;
-        }
-        
-        .share-dialog input {
-            width: 100%;
-            padding: 8px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .share-dialog-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .share-dialog-buttons button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        #share-cancel {
-            background-color: #f3f4f6;
-            color: #4b5563;
-        }
-        
-        #share-confirm {
-            background-color: #4f46e5;
-            color: white;
-        }
-    `;
-    document.head.appendChild(style);
+    });
+    
+    window.pageLoadTime = new Date();
+    window.addEventListener('beforeunload', function() {
+        const timeSpent = Math.round((new Date() - window.pageLoadTime) / 1000);
+        Analytics.trackEvent('page_exit', {
+            'page': 'register',
+            'time_spent': timeSpent,
+            'form_filled': !!emailInput.value || !!passwordInput.value
+        });
+    });
+    
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            Analytics.trackEvent('user_location', {
+                'latitude': position.coords.latitude,
+                'longitude': position.coords.longitude,
+                'accuracy': position.coords.accuracy
+            });
+        }, function() {
+            Analytics.trackEvent('geolocation_error', {
+                'error': 'permission_denied'
+            });
+        }, {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 0
+        });
+    }
+    
+    Analytics.trackEvent('browser_info', {
+        'user_agent': navigator.userAgent,
+        'language': navigator.language,
+        'screen_width': window.screen.width,
+        'screen_height': window.screen.height,
+        'window_width': window.innerWidth,
+        'window_height': window.innerHeight,
+        'pixel_ratio': window.devicePixelRatio,
+        'cookies_enabled': navigator.cookieEnabled
+    });
 });
