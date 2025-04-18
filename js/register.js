@@ -1,4 +1,3 @@
-//js\register.js
 document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('register-form');
     const emailInput = document.getElementById('email');

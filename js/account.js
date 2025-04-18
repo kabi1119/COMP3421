@@ -203,12 +203,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             (error.message.startsWith('{') || error.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
                             
                             if (error.message.includes('INVALID_LOGIN_CREDENTIALS')) {
-                                errorMessage = 'Incorrect password. Account deletion canceled.';
+                                errorMessage = 'Incorrect password. Account deletion aborted.';
                             } else {
                                 const errorObj = JSON.parse(error.message);
                                 if (errorObj.error && errorObj.error.message) {
                                     if (errorObj.error.message === 'INVALID_LOGIN_CREDENTIALS') {
-                                        errorMessage = 'Incorrect password. Account deletion canceled.';
+                                        errorMessage = 'Incorrect password. Account deletion aborted.';
                                     } else {
                                         errorMessage = errorObj.error.message;
                                     }
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             switch(error.code) {
                                 case 'auth/wrong-password':
                                 case 'auth/invalid-credential':
-                                    errorMessage = 'Incorrect password. Account deletion canceled.';
+                                    errorMessage = 'Incorrect password. Account deletion aborted.';
                                     break;
                                 case 'auth/too-many-requests':
                                     errorMessage = 'Too many attempts. Please try again later.';
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             switch(error.code) {
                                 case 'auth/wrong-password':
                                 case 'auth/invalid-credential':
-                                    errorMessage = 'Incorrect password. Account deletion canceled.';
+                                    errorMessage = 'Incorrect password. Account deletion aborted.';
                                     break;
                                 default:
                                     errorMessage = error.message;
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Error signing out: ' + error.message);
             });
     });
-    
+
 firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
         user.reload().then(() => {

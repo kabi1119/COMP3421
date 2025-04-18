@@ -168,23 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (password.length < 6) {
-            errorMessage.textContent = 'Password must be at least 6 characters long.';
+            errorMessage.textContent = 'Password must be at least 8 characters long.';
             errorMessage.style.display = 'block';
             
             Analytics.trackEvent('registration_validation_error', {
                 'error': 'password_too_short',
                 'password_length': password.length
-            });
-            
-            return;
-        }
-        
-        if (termsCheckbox && !termsCheckbox.checked) {
-            errorMessage.textContent = 'You must agree to the Terms and Conditions.';
-            errorMessage.style.display = 'block';
-            
-            Analytics.trackEvent('registration_validation_error', {
-                'error': 'terms_not_accepted'
             });
             
             return;
