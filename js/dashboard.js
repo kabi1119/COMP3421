@@ -515,4 +515,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     })();
     
+    function createFilePreview(file) {
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'file-preview';
+        
+        if (file.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = file.downloadUrl;
+            img.alt = file.name;
+            img.className = 'preview-image';
+            previewContainer.appendChild(img);
+        } else if (file.type.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.src = file.downloadUrl;
+            video.controls = true;
+            video.className = 'preview-video';
+            previewContainer.appendChild(video);
+        } else if (file.type.startsWith('audio/')) {
+            const audio = document.createElement('audio');
+            audio.src = file.downloadUrl;
+            audio.controls = true;
+            audio.className = 'preview-audio';
+            previewContainer.appendChild(audio);
+        } else if (file.type === 'application/pdf') {
+            const iframe = document.createElement('iframe');
+            iframe.src = file.downloadUrl;
+            iframe.className = 'preview-pdf';
+            previewContainer.appendChild(iframe);
+        } else if (file.type.includes('text/') || 
+                  file.type === 'application/json' || 
+                  file.type === 'application/xml' || 
+                  file.type === 'application/javascript') {
+            const iframe = document.createElement('iframe');
+            iframe.src = file.downloadUrl;
+            iframe.className = 'preview-text';
+            previewContainer.appendChild(iframe);
+        } else {
+            const noPreview = document.createElement('div');
+            noPreview.className = 'no-preview';
+            noPreview.innerHTML = `
+                <i class="fas fa-file fa-3x"></i>
+                <p>No preview available for this file type</p>
+                <a href="${file.downloadUrl}" class="btn btn-primary" target="_blank">Download to view</a>
+            `;
+            previewContainer.appendChild(noPreview);
+        }
+        
+        return previewContainer;
+    }
+    function renderFileItem(file) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.dataset.id = file.id;
+
+        const previewButton = document.createElement('button');
+        previewButton.className = 'btn btn-sm btn-info preview-btn';
+        previewButton.innerHTML = '<i class="fas fa-eye"></i>';
+        previewButton.title = 'Preview file';
+        previewButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const modal = document.createElement('div');
+            modal.className = 'preview-modal';
+            modal.innerHTML = `
+                <div class="preview-modal-content">
+                    <div class="preview-header">
+                        <h3>${file.name}</h3>
+                        <button class="close-preview">&times;</button>
+                    </div>
+                    <div class="preview-body"></div>
+                </div>
+            `;
+            
+            const previewBody = modal.querySelector('.preview-body');
+            previewBody.appendChild(createFilePreview(file));
+            
+            modal.querySelector('.close-preview').addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+            
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+            
+            document.body.appendChild(modal);
+        });
+        
+        return fileItem;
+    }
 });

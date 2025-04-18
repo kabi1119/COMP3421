@@ -1,4 +1,3 @@
-//js\account.js
 document.addEventListener('DOMContentLoaded', function() {
     const userEmail = document.getElementById('user-email');
     const changePasswordForm = document.getElementById('change-password-form');
@@ -260,5 +259,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Error signing out: ' + error.message);
             });
     });
+    
+firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+        user.reload().then(() => {
+            if (!user.emailVerified) {
+                const uploadBtn = document.getElementById('upload-btn');
+                if (uploadBtn) {
+                    uploadBtn.disabled = true;
+                    uploadBtn.title = 'Please verify your email to upload files';
+                }
+                
+                const verificationWarning = document.createElement('div');
+                verificationWarning.className = 'verification-warning';
+                verificationWarning.innerHTML = `
+                    <p><strong>Email not verified!</strong> Please check your inbox and verify your email.</p>
+                    <button id="resend-verification" class="btn btn-secondary">Resend Verification Email</button>
+                `;
+                
+                const contentArea = document.querySelector('.content-area');
+                if (contentArea) {
+                    contentArea.insertBefore(verificationWarning, contentArea.firstChild);
+                }
+                
+                document.getElementById('resend-verification').addEventListener('click', function() {
+                    user.sendEmailVerification()
+                        .then(() => {
+                            showNotification('Verification email resent!', 'success');
+                        })
+                        .catch((error) => {
+                            showNotification('Error: ' + error.message, 'error');
+                        });
+                });
+            }
+        });
+    } else {
+        window.location.href = 'index.html?redirect=account';
+    }
 });
 
+});
