@@ -731,6 +731,15 @@ button:disabled {
     text-decoration: underline;
 }
 
+.file-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
 .preview-modal {
     position: fixed;
     top: 0;
@@ -782,14 +791,14 @@ button:disabled {
     flex: 1;
 }
 
-.preview-image {
+.preview-image, .preview-video {
     max-width: 100%;
-    max-height: 70vh;
-    display: block;
-    margin: 0 auto;
+    max-height: 100%;
+    object-fit: cover;
 }
 
-.preview-video, .preview-audio {
+
+.preview-audio {
     width: 100%;
     max-height: 70vh;
 }
@@ -804,6 +813,11 @@ button:disabled {
     text-align: center;
     padding: 40px;
     color: #666;
+}
+
+.file-thumbnail i {
+    font-size: 5rem;
+    color: #4285f4;
 }
 
 .verification-warning {
