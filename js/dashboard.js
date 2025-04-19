@@ -181,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="file-actions">
                         <button class="download-btn" data-url="${file.downloadURL}">Download</button>
                         <button class="delete-btn" data-id="${file.id}" data-name="${file.name}" data-path="${file.path}">Delete</button>
+                        <button class="share-btn" data-url="${file.downloadURL}">Share</button>
                     </div>
                 </div>
             `;
@@ -202,6 +203,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 deleteFileName.textContent = fileToDelete.name;
                 deleteModal.style.display = 'block';
+            });
+
+            const shareBtn = fileCard.querySelector('.share-btn');
+            shareBtn.addEventListener('click', function() {
+                const fileUrl = this.dataset.url;
+                navigator.clipboard.writeText(fileUrl).then(() => {
+                    alert('Link copied to clipboard!');
+                });
             });
         });
     }
@@ -518,51 +527,49 @@ document.addEventListener('DOMContentLoaded', function() {
     function createFilePreview(file) {
         const previewContainer = document.createElement('div');
         previewContainer.className = 'file-preview';
-        
-        if (file.type.startsWith('image/')) {
+    
+        const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+        const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi'];
+    
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+    
+        if (imageExtensions.includes(fileExtension)) {
             const img = document.createElement('img');
-            img.src = file.downloadUrl;
+            img.src = file.downloadURL;
             img.alt = file.name;
             img.className = 'preview-image';
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '200px';
             previewContainer.appendChild(img);
-        } else if (file.type.startsWith('video/')) {
+        } else if (videoExtensions.includes(fileExtension)) {
             const video = document.createElement('video');
-            video.src = file.downloadUrl;
+            video.src = file.downloadURL;
             video.controls = true;
             video.className = 'preview-video';
+            video.style.maxWidth = '100%';
+            video.style.maxHeight = '200px';
             previewContainer.appendChild(video);
-        } else if (file.type.startsWith('audio/')) {
-            const audio = document.createElement('audio');
-            audio.src = file.downloadUrl;
-            audio.controls = true;
-            audio.className = 'preview-audio';
-            previewContainer.appendChild(audio);
         } else if (file.type === 'application/pdf') {
-            const iframe = document.createElement('iframe');
-            iframe.src = file.downloadUrl;
-            iframe.className = 'preview-pdf';
-            previewContainer.appendChild(iframe);
-        } else if (file.type.includes('text/') || 
-                  file.type === 'application/json' || 
-                  file.type === 'application/xml' || 
-                  file.type === 'application/javascript') {
-            const iframe = document.createElement('iframe');
-            iframe.src = file.downloadUrl;
-            iframe.className = 'preview-text';
-            previewContainer.appendChild(iframe);
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file-pdf fa-5x';
+            previewContainer.appendChild(icon);
+        } else if (file.type.includes('wordprocessingml.document')) {
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file-word fa-5x';
+            previewContainer.appendChild(icon);
+        } else if (file.type.includes('presentationml.presentation')) {
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file-powerpoint fa-5x';
+            previewContainer.appendChild(icon);
         } else {
-            const noPreview = document.createElement('div');
-            noPreview.className = 'no-preview';
-            noPreview.innerHTML = `
-                <i class="fas fa-file fa-3x"></i>
-                <p>No preview available for this file type</p>
-                <a href="${file.downloadUrl}" class="btn btn-primary" target="_blank">Download to view</a>
-            `;
-            previewContainer.appendChild(noPreview);
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file fa-5x';
+            previewContainer.appendChild(icon);
         }
-        
+    
         return previewContainer;
-    }
+    }    
+    
     function renderFileItem(file) {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';

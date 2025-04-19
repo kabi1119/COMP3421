@@ -210,14 +210,15 @@ button:disabled {
 
 .file-actions {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     margin-top: 10px;
 }
 
 .file-actions button {
-    width: 48%;
+    width: 100%;
     padding: 8px 0;
     font-size: 0.9rem;
+    margin-bottom: 5px;
 }
 
 .file-actions .delete-btn {
