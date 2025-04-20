@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="file-size">${formatFileSize(file.size)}</div>
                     <div class="file-date">Uploaded on ${formatDate(file.uploadedAt)}</div>
                     <div class="file-actions">
-                        <button class="download-btn" data-url="${file.downloadURL}">Download</button>
+                        <button class="download-btn" data-url="${file.downloadURL}">View & Save</button>
                         <button class="delete-btn" data-id="${file.id}" data-name="${file.name}" data-path="${file.path}">Delete</button>
                         <button class="share-btn" data-url="${file.downloadURL}">Share</button>
                     </div>
@@ -190,7 +190,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const downloadBtn = fileCard.querySelector('.download-btn');
             downloadBtn.addEventListener('click', function() {
-                window.open(this.dataset.url, '_blank');
+                const fileUrl = this.dataset.url;
+                
+                window.open(fileUrl, '_blank');
+                
+                showNotification('File opened in new tab. Right-click and select "Save As" to download.', 'info');
             });
             
             const deleteBtn = fileCard.querySelector('.delete-btn');
@@ -204,12 +208,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 deleteFileName.textContent = fileToDelete.name;
                 deleteModal.style.display = 'block';
             });
-
+            
             const shareBtn = fileCard.querySelector('.share-btn');
             shareBtn.addEventListener('click', function() {
                 const fileUrl = this.dataset.url;
                 navigator.clipboard.writeText(fileUrl).then(() => {
-                    alert('Link copied to clipboard!');
+                    showNotification('Link copied to clipboard!', 'success');
+                }).catch((err) => {
+                    showNotification('Failed to copy link!', 'error');
                 });
             });
         });
@@ -527,48 +533,72 @@ document.addEventListener('DOMContentLoaded', function() {
     function createFilePreview(file) {
         const previewContainer = document.createElement('div');
         previewContainer.className = 'file-preview';
-    
+        
         const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
         const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi'];
-    
         const fileExtension = file.name.split('.').pop().toLowerCase();
-    
+        
         if (imageExtensions.includes(fileExtension)) {
             const img = document.createElement('img');
             img.src = file.downloadURL;
             img.alt = file.name;
             img.className = 'preview-image';
             img.style.maxWidth = '100%';
-            img.style.maxHeight = '200px';
+            img.style.maxHeight = '300px';
             previewContainer.appendChild(img);
         } else if (videoExtensions.includes(fileExtension)) {
             const video = document.createElement('video');
             video.src = file.downloadURL;
             video.controls = true;
+            video.autoplay = false;
             video.className = 'preview-video';
             video.style.maxWidth = '100%';
-            video.style.maxHeight = '200px';
+            video.style.maxHeight = '300px';
             previewContainer.appendChild(video);
-        } else if (file.type === 'application/pdf') {
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-file-pdf fa-5x';
-            previewContainer.appendChild(icon);
-        } else if (file.type.includes('wordprocessingml.document')) {
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-file-word fa-5x';
-            previewContainer.appendChild(icon);
-        } else if (file.type.includes('presentationml.presentation')) {
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-file-powerpoint fa-5x';
-            previewContainer.appendChild(icon);
+        } else if (fileExtension === 'pdf') {
+            const iframe = document.createElement('iframe');
+            iframe.src = file.downloadURL;
+            iframe.className = 'preview-pdf';
+            iframe.style.width = '100%';
+            iframe.style.height = '500px';
+            iframe.style.border = 'none';
+            previewContainer.appendChild(iframe);
         } else {
+            const noPreview = document.createElement('div');
+            noPreview.className = 'no-preview';
+            noPreview.style.textAlign = 'center';
+            noPreview.style.padding = '40px';
+            
             const icon = document.createElement('i');
-            icon.className = 'fas fa-file fa-5x';
-            previewContainer.appendChild(icon);
+            icon.className = `fas ${getFileIconClass(fileExtension)} fa-5x`;
+            icon.style.marginBottom = '20px';
+            icon.style.color = '#4285f4';
+            
+            const text = document.createElement('p');
+            text.textContent = 'No preview available for this file type';
+            text.style.marginBottom = '20px';
+            
+            const link = document.createElement('a');
+            link.href = file.downloadURL;
+            link.target = '_blank';
+            link.className = 'btn btn-primary';
+            link.textContent = 'Download to view';
+            link.style.display = 'inline-block';
+            link.style.padding = '10px 20px';
+            link.style.backgroundColor = '#4285f4';
+            link.style.color = 'white';
+            link.style.textDecoration = 'none';
+            link.style.borderRadius = '4px';
+            
+            noPreview.appendChild(icon);
+            noPreview.appendChild(text);
+            noPreview.appendChild(link);
+            
+            previewContainer.appendChild(noPreview);
         }
-    
+        
         return previewContainer;
-    }    
+    }
     
     function renderFileItem(file) {
         const fileItem = document.createElement('div');
