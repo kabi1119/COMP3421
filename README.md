@@ -162,24 +162,6 @@ Deploy your app:
 
 Your app will be available at https://YOUR_PROJECT_ID.web.app
 
-Project Structure
-COMP3421/
-├── css/
-│   └── styles.css           # Main stylesheet
-├── js/
-│   ├── account.js           # Account management functionality
-│   ├── analytics.js         # Google Analytics integration
-│   ├── dashboard.js         # Dashboard functionality
-│   ├── firebase-config.js   # Firebase configuration
-│   ├── idle-logout.js       # Automatic logout on inactivity
-│   ├── login.js             # Login functionality
-│   └── register.js          # Registration functionality
-├── account.html             # Account settings page
-├── dashboard.html           # Main dashboard page
-├── index.html               # Login page
-└── register.html            # Registration page
-
-
 
 Usage Guide
 
