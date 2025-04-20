@@ -1,4 +1,5 @@
 COMP3421 Interactive Web-based File Sharing System
+
 A secure and user-friendly file sharing system built with HTML, CSS, JavaScript, and Firebase. This project allows users to register, upload, manage, and share files through a responsive web interface.
 
 Features
@@ -28,11 +29,13 @@ Real-time upload progress
 File type recognition and icons
 Notification system
 Search functionality
+
 Setup Guide
 Prerequisites
 A Google account
 Basic knowledge of HTML, CSS, and JavaScript
 A code editor (like VS Code, Sublime Text, etc.)
+
 Step 1: Create a Firebase Project
 Go to Firebase Console
 Click "Add project"
@@ -40,12 +43,14 @@ Enter a project name (e.g., "COMP3421-File-Sharing")
 Accept the terms and click "Continue"
 Configure Google Analytics (optional)
 Click "Create project"
+
 Step 2: Set Up Firebase Authentication
 In your Firebase project console, click "Authentication" in the left sidebar
 Click "Get started"
 Select "Email/Password" from the Sign-in method tab
 Enable "Email/Password" option
 Click "Save"
+
 Step 3: Set Up Firebase Firestore
 In the left sidebar, click "Firestore Database"
 Click "Create database"
@@ -53,12 +58,14 @@ Choose "Start in test mode" (for development)
 Click "Next"
 Choose a location for your database
 Click "Enable"
+
 Step 4: Set Up Firebase Storage
 In the left sidebar, click "Storage"
 Click "Get started"
 Click "Next"
 Choose a location for your storage (same as your Firestore location)
 Click "Done"
+
 Step 5: Register Your Web App
 Go to the project overview page
 Click the web icon (</>) to add a web app
@@ -67,6 +74,7 @@ Check "Also set up Firebase Hosting" if you want to host your app on Firebase
 Click "Register app"
 Copy the Firebase configuration object
 Click "Next" and then "Continue to console"
+
 Step 6: Configure the Project
 Clone this repository or download the project files
 Create a file named js/firebase-config.js with the following content:
@@ -86,7 +94,6 @@ if (!firebase.apps.length) {
 
 const auth = firebase.auth();
 const db = firebase.firestore();
-
 
 
 Replace the placeholder values with your Firebase configuration values from Step 5.
@@ -132,35 +139,29 @@ Right-click on index.html and select "Open with Live Server"
 
 Option 2: Firebase Hosting
 Install Firebase CLI:
-npm install -g firebase-tools
+``npm install -g firebase-tools``
 
-Copy
-Execute
 
 Login to Firebase:
-firebase login
+``firebase login``
 
-Copy
-Execute
 
 Initialize Firebase in your project folder:
-firebase init
+``firebase init``
 
-Copy
-Execute
 
 Select Hosting
 Select your Firebase project
 Use "." as your public directory
 Configure as a single-page app: No
 Set up automatic builds and deploys: No
-Deploy your app:
-firebase deploy
 
-Copy
-Execute
+Deploy your app:
+``firebase deploy``
+
 
 Your app will be available at https://YOUR_PROJECT_ID.web.app
+
 Project Structure
 COMP3421/
 ├── css/
@@ -181,32 +182,38 @@ COMP3421/
 
 
 Usage Guide
+
 Registration and Login
 Open the application and click "Register Here" on the login page
 Enter your email and create a password that meets the requirements
 Submit the form and check your email for a verification link
 Click the verification link in your email
 Return to the application and log in with your credentials
+
 File Management
 After logging in, you'll be directed to the dashboard
 Upload files by clicking the "Select Files" button or by dragging and dropping files
 View your uploaded files in the grid below
 Use the search bar to find specific files
-Download files by clicking the "Download" button
+View or download files by clicking the "View & Save" button
 Share files by clicking the "Share" button and copying the link
 Delete files by clicking the "Delete" button and confirming
+
 Account Management
 Click "Account" in the navigation bar to access account settings
 View your account information
+
 Change your password
 Request a password reset email
 Delete your account (requires password confirmation)
+
 Security Features
 Email Verification: Users must verify their email before accessing the system
 Password Requirements: Strong password requirements with real-time validation
 Automatic Logout: Users are logged out after 10 minutes of inactivity
 Secure Storage: Files are stored securely in Firebase Storage
 Access Control: Users can only access their own files
+
 Troubleshooting
 Common Issues
 Authentication Issues
@@ -235,20 +242,6 @@ The free tier of Firebase has certain limitations:
 50,000 document reads per day
 Monitor your usage in the Firebase console to avoid exceeding these limits.
 
-Future Enhancements
-Folder organization
-File versioning
-Direct user-to-user sharing
-Social media sharing integration
-File preview for more file types
-Collaborative editing
-Mobile application
-Contributing
-Fork the repository
-Create a feature branch (git checkout -b feature/amazing-feature)
-Commit your changes (git commit -m 'Add some amazing feature')
-Push to the branch (git push origin feature/amazing-feature)
-Open a Pull Request
 
 Acknowledgements
 Firebase for authentication, storage, and hosting
